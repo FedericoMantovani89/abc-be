@@ -1,0 +1,18 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Maven / Spring Boot
+target/
+server.log
+*.log
+*.class
+uploads/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml

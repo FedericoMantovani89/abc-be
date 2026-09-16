@@ -1,0 +1,22 @@
+# Normalizzazione fine-riga: il repo memorizza sempre LF, il checkout adatta all'OS.
+* text=auto eol=lf
+
+# File specifici di Windows: devono restare CRLF anche dopo il checkout
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# File binari: nessuna conversione
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.svg   text
+*.pdf   binary
+*.jar   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary

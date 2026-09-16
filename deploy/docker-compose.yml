@@ -1,0 +1,82 @@
+name: abc-musical
+
+services:
+  backend:
+    build:
+      context: ..
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: nibius-db            # PostgreSQL condiviso (nibius-infra), rete nibius-data
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-abc}
+      DB_USER: ${DB_USER:-abc_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600}
+      JWT_REMEMBERME_EXPIRATION: ${JWT_REMEMBERME_EXPIRATION:-2592000}
+      REMEMBER_ME_KEY: ${REMEMBER_ME_KEY}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      FACEBOOK_CLIENT_ID: ${FACEBOOK_CLIENT_ID}
+      FACEBOOK_CLIENT_SECRET: ${FACEBOOK_CLIENT_SECRET}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:3000}
+      APP_UPLOAD_DIR: /var/data/uploads
+      UPLOAD_CHUNK_SIZE_MB: ${UPLOAD_CHUNK_SIZE_MB:-8}
+      UPLOAD_SESSION_TTL_HOURS: ${UPLOAD_SESSION_TTL_HOURS:-24}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    ports:
+      - "8080:8080"   # serve per i redirect OAuth2 e per lo sviluppo ibrido
+    volumes:
+      - abc_uploads:/var/data/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 40s
+    networks:
+      default: {}
+      nibius-data: {}
+
+  frontend:
+    build:
+      context: ../../abc-fe
+      args:
+        SPRING_API_URL: http://backend:8080
+        BACKEND_HOSTNAME: backend:8080
+        CACHEBUST: ${CACHEBUST:-1}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      SPRING_API_URL: http://backend:8080
+      NEXTAUTH_URL: ${APP_FRONTEND_URL:-http://localhost:3000}
+      AUTH_URL: ${APP_FRONTEND_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      BACKEND_HOSTNAME: backend:8080
+    ports:
+      - "3000:3000"   # accesso locale diretto; il traffico pubblico passa da Caddy (rete edge)
+    networks:
+      default: {}
+      edge:
+        aliases:
+          - abc-frontend
+
+volumes:
+  abc_uploads:
+
+networks:
+  edge:
+    external: true
+  nibius-data:
+    external: true

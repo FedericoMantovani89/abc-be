@@ -1,0 +1,40 @@
+jwt:
+  secret: dGVzdC1zZWNyZXQtMzItYnl0ZXMtbG9uZy1mb3ItaHMyNTYhIQ==
+  expiration: 3600
+  rememberme-expiration: 2592000
+  issuer: abc-musical
+
+security:
+  remember-me-key: test-remember-me-key
+
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-client-id
+            client-secret: test-google-client-secret
+            scope: openid,email,profile
+          facebook:
+            client-id: test-facebook-client-id
+            client-secret: test-facebook-client-secret
+            scope: email,public_profile
+  mail:
+    host: localhost
+    port: 2525
+    username: test
+    password: test
+
+management:
+  health:
+    mail:
+      enabled: false
+
+app:
+  base-url: http://localhost:8080
+  frontend-url: http://localhost:3000
+  upload-dir: ${java.io.tmpdir}/abc-test-uploads
+  admin:
+    email: ""
+    password: ""

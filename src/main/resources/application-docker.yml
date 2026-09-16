@@ -1,0 +1,6 @@
+app:
+  upload-dir: /var/data/uploads
+
+logging:
+  level:
+    it.abc.musical: INFO

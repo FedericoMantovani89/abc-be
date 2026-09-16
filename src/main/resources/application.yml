@@ -1,0 +1,81 @@
+spring:
+  application:
+    name: abc-musical
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:abc}
+    username: ${DB_USER:abc}
+    password: ${DB_PASSWORD:}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate        # Flyway gestisce lo schema
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
+            redirect-uri: "${APP_BASE_URL:http://localhost:8080}/login/oauth2/code/google"
+            scope: openid,email,profile
+          facebook:
+            client-id: ${FACEBOOK_CLIENT_ID:}
+            client-secret: ${FACEBOOK_CLIENT_SECRET:}
+            redirect-uri: "${APP_BASE_URL:http://localhost:8080}/login/oauth2/code/facebook"
+            scope: email,public_profile
+
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 105MB
+
+jwt:
+  secret: ${JWT_SECRET:}
+  expiration: ${JWT_EXPIRATION:3600}
+  rememberme-expiration: ${JWT_REMEMBERME_EXPIRATION:2592000}
+  issuer: abc-musical
+
+security:
+  remember-me-key: ${REMEMBER_ME_KEY:}
+
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:3000}
+  upload-dir: ${APP_UPLOAD_DIR:./uploads}
+  upload:
+    chunk-size-mb: ${UPLOAD_CHUNK_SIZE_MB:8}
+    session-ttl-hours: ${UPLOAD_SESSION_TTL_HOURS:24}
+  admin:
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+server:
+  port: 8080
+  forward-headers-strategy: framework
+  tomcat:
+    max-swallow-size: 110MB
