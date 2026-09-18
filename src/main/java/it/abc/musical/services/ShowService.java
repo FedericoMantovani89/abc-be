@@ -161,6 +161,9 @@ public class ShowService {
         show.setSocialMediaUrl(request.socialMediaUrl());
         show.setContentWarnings(request.contentWarnings() != null
                 ? new ArrayList<>(request.contentWarnings()) : new ArrayList<>());
+        if (request.showInHome() != null) {
+            show.setShowInHome(request.showInHome());
+        }
         show.setUpdatedBy(userId);
 
         // Il cast viene sostituito integralmente (orphanRemoval elimina i rimossi).

@@ -35,7 +35,8 @@ public final class AdminShowDtos {
             List<CastMemberRequest> cast,
             List<ContentWarning> contentWarnings,
             List<Long> retainImageIds,
-            String posterPath) {
+            String posterPath,
+            Boolean showInHome) {
     }
 
     public record GalleryImageAttachRequest(@NotBlank String imagePath, String caption) {

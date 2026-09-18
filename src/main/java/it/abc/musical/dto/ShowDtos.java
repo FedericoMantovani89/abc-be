@@ -19,12 +19,13 @@ public final class ShowDtos {
 
     public record ShowSummaryDto(
             Long id, String title, Integer productionYear, int durationMinutes,
-            Integer ageRecommendation, String posterImageUrl, String director, LocalDateTime createdAt) {
+            Integer ageRecommendation, String posterImageUrl, String director, LocalDateTime createdAt,
+            boolean showInHome) {
 
         public static ShowSummaryDto from(Show s) {
             return new ShowSummaryDto(s.getId(), s.getTitle(), s.getProductionYear(),
                     s.getDurationMinutes(), s.getAgeRecommendation(), s.getPosterImageUrl(),
-                    s.getDirector(), s.getCreatedAt());
+                    s.getDirector(), s.getCreatedAt(), s.isShowInHome());
         }
     }
 
@@ -33,7 +34,7 @@ public final class ShowDtos {
             String director, String setDesigner, String costumeDesigner, String choreographer,
             String hairAndMakeup, String producer, Integer productionYear,
             String trailerUrl, String officialWebsiteUrl, String reviewsUrl, String socialMediaUrl,
-            String posterImageUrl, List<ContentWarning> contentWarnings,
+            String posterImageUrl, boolean showInHome, List<ContentWarning> contentWarnings,
             List<CastMemberDto> cast, List<ShowImageDto> images) {
 
         public static ShowDetailDto from(Show s) {
@@ -42,7 +43,7 @@ public final class ShowDtos {
                     s.getDirector(), s.getSetDesigner(), s.getCostumeDesigner(), s.getChoreographer(),
                     s.getHairAndMakeup(), s.getProducer(), s.getProductionYear(),
                     s.getTrailerUrl(), s.getOfficialWebsiteUrl(), s.getReviewsUrl(), s.getSocialMediaUrl(),
-                    s.getPosterImageUrl(), s.getContentWarnings(),
+                    s.getPosterImageUrl(), s.isShowInHome(), s.getContentWarnings(),
                     s.getCast().stream()
                             .map(c -> new CastMemberDto(c.getId(), c.getFirstName(), c.getLastName(),
                                     c.getRoleName(), c.getSortOrder()))
