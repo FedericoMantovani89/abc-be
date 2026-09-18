@@ -25,6 +25,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * Upload a chunk: sessioni in-memory, scrittura idempotente per indice di chunk,
@@ -71,11 +72,18 @@ public class ChunkedUploadService {
     public InitUploadResponse init(UploadTargetType targetType, String filename, long totalSize) {
         String extension = StorageService.extensionOf(filename);
         if (!FileTypeUtil.isAllowedExtension(extension)) {
-            throw new BadRequestException("Tipo di file non consentito: ." + extension);
+            throw new BadRequestException("Tipo di file .%s non consentito. Estensioni ammesse: %s"
+                    .formatted(extension, FileTypeUtil.allowedExtensionsList()));
         }
         Category category = FileTypeUtil.categoryOf(extension);
         if (!targetType.allowedCategories().contains(category)) {
-            throw new BadRequestException("Tipo di file non consentito per questa destinazione");
+            String allowedLabels = targetType.allowedCategories().stream()
+                    .sorted()
+                    .map(FileTypeUtil::labelOf)
+                    .collect(Collectors.joining(", "));
+            throw new BadRequestException(
+                    "Tipo di file .%s non consentito per questa destinazione: sono ammessi solo file di tipo %s."
+                            .formatted(extension, allowedLabels));
         }
         if (totalSize <= 0) {
             throw new BadRequestException("Dimensione file non valida");

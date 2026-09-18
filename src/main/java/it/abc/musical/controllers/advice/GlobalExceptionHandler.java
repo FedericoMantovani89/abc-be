@@ -43,8 +43,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     ResponseEntity<Map<String, String>> uploadTooLarge(MaxUploadSizeExceededException ex) {
+        String message = ex.getMaxUploadSize() > 0
+                ? "File troppo grande: supera il limite massimo di %d MB consentito dal server. "
+                        .formatted(ex.getMaxUploadSize() / 1024 / 1024)
+                        + "Riduci le dimensioni del file e riprova."
+                : "File troppo grande. Riduci le dimensioni del file e riprova.";
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(Map.of("error", "File troppo grande"));
+                .body(Map.of("error", message));
     }
 
     @ExceptionHandler(Exception.class)

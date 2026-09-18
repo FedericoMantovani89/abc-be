@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -48,20 +49,26 @@ public class FileValidationService {
     public String validate(MultipartFile file) {
         String extension = StorageService.extensionOf(file.getOriginalFilename());
         if (!FileTypeUtil.isAllowedExtension(extension)) {
-            throw new BadRequestException("Tipo di file non consentito: ." + extension);
+            throw new BadRequestException("Tipo di file .%s non consentito. Estensioni ammesse: %s"
+                    .formatted(extension, FileTypeUtil.allowedExtensionsList()));
         }
 
         Category category = FileTypeUtil.categoryOf(extension);
         DataSize limit = SIZE_LIMITS.get(category);
         if (file.getSize() > limit.toBytes()) {
-            throw new BadRequestException("File troppo grande: massimo %d MB per %s"
-                    .formatted(limit.toMegabytes(), category.name().toLowerCase()));
+            double sizeMb = file.getSize() / 1024.0 / 1024.0;
+            throw new BadRequestException(String.format(Locale.ITALY,
+                    "File troppo grande: %s pesa %.2f MB, oltre il limite di %d MB per %s. "
+                            + "Riduci le dimensioni del file e riprova.",
+                    file.getOriginalFilename(), sizeMb, limit.toMegabytes(), FileTypeUtil.labelOf(category)));
         }
 
         String detectedMime = detectMime(file);
 
         if (DANGEROUS_MIMES.contains(detectedMime)) {
-            throw new BadRequestException("Contenuto del file non consentito");
+            throw new BadRequestException(
+                    ("Contenuto del file non consentito: rilevato come %s, non ammesso per motivi di sicurezza. "
+                            + "Carica un file diverso.").formatted(detectedMime));
         }
         Set<String> expected = FileTypeUtil.expectedMimes(extension);
         if (!expected.contains(detectedMime)) {

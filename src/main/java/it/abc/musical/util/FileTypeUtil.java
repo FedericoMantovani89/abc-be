@@ -4,6 +4,8 @@ import it.abc.musical.enums.MediaFileType;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 /** Mappatura estensione → categoria, MIME attesi e tipo media. */
 public final class FileTypeUtil {
@@ -46,6 +48,13 @@ public final class FileTypeUtil {
             Map.entry("zip", Set.of("application/zip", "application/x-tika-ooxml")),
             Map.entry("rar", Set.of("application/x-rar-compressed", "application/x-rar")));
 
+    /** Nome della categoria in italiano leggibile, plurale, per i messaggi utente. */
+    private static final Map<Category, String> CATEGORY_LABELS_IT = Map.of(
+            Category.IMAGE, "immagini",
+            Category.AUDIO, "audio",
+            Category.VIDEO, "video",
+            Category.DOCUMENT, "documenti");
+
     private FileTypeUtil() {
     }
 
@@ -59,6 +68,18 @@ public final class FileTypeUtil {
 
     public static Set<String> expectedMimes(String extension) {
         return EXPECTED_MIMES.getOrDefault(extension, Set.of());
+    }
+
+    /** Nome della categoria in italiano leggibile, plurale (es. "immagini"), per i messaggi utente. */
+    public static String labelOf(Category category) {
+        return CATEGORY_LABELS_IT.get(category);
+    }
+
+    /** Elenco ordinato delle estensioni ammesse (es. ".doc, .jpg, .pdf, ..."), per i messaggi utente. */
+    public static String allowedExtensionsList() {
+        return new TreeSet<>(CATEGORY_BY_EXTENSION.keySet()).stream()
+                .map(ext -> "." + ext)
+                .collect(Collectors.joining(", "));
     }
 
     public static MediaFileType mediaTypeOf(String extension) {
