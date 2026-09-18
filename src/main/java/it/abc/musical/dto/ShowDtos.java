@@ -3,6 +3,7 @@ package it.abc.musical.dto;
 import it.abc.musical.entities.ContentWarning;
 import it.abc.musical.entities.Show;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public final class ShowDtos {
@@ -18,12 +19,12 @@ public final class ShowDtos {
 
     public record ShowSummaryDto(
             Long id, String title, Integer productionYear, int durationMinutes,
-            Integer ageRecommendation, String posterImageUrl, String director) {
+            Integer ageRecommendation, String posterImageUrl, String director, LocalDateTime createdAt) {
 
         public static ShowSummaryDto from(Show s) {
             return new ShowSummaryDto(s.getId(), s.getTitle(), s.getProductionYear(),
                     s.getDurationMinutes(), s.getAgeRecommendation(), s.getPosterImageUrl(),
-                    s.getDirector());
+                    s.getDirector(), s.getCreatedAt());
         }
     }
 
