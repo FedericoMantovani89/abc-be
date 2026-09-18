@@ -72,6 +72,10 @@ public class Show {
     @Column(name = "poster_image_url", length = 512)
     private String posterImageUrl;
 
+    /** Flag admin: se true (e con locandina) lo spettacolo compare nel Repertorio della home. */
+    @Column(name = "show_in_home", nullable = false)
+    private boolean showInHome = false;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "content_warnings", columnDefinition = "jsonb")
     private List<ContentWarning> contentWarnings = new ArrayList<>();
