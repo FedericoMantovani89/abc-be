@@ -114,6 +114,7 @@ public class EventService {
         event.setLocationAddress(request.locationAddress());
         event.setLocationCity(request.locationCity());
         event.setLocationProvince(request.locationProvince());
+        validateBookingWindow(request.bookingOpenAt(), request.bookingCloseAt(), request.eventDate());
         event.setBookingOpenAt(request.bookingOpenAt());
         event.setBookingCloseAt(request.bookingCloseAt());
         event.setBookingLink(request.bookingLink());
@@ -128,6 +129,24 @@ public class EventService {
                         .orElseThrow(() -> new NotFoundException("Spettacolo non trovato"))
                 : null);
         event.setUpdatedBy(userId);
+    }
+
+    /**
+     * Le date di prenotazione restano facoltative: un evento senza nessuna delle due, o con
+     * una sola, è legittimo e non viene toccato qui. Controllato solo in scrittura (create/
+     * update) così una riga già in database con una finestra impossibile resta leggibile
+     * finché non viene corretta da qui.
+     */
+    private void validateBookingWindow(LocalDateTime bookingOpenAt, LocalDateTime bookingCloseAt,
+            LocalDateTime eventDate) {
+        if (bookingOpenAt != null && bookingCloseAt != null && !bookingOpenAt.isBefore(bookingCloseAt)) {
+            throw new BadRequestException(
+                    "L'apertura delle prenotazioni deve essere precedente alla chiusura.");
+        }
+        if (bookingCloseAt != null && bookingCloseAt.isAfter(eventDate)) {
+            throw new BadRequestException(
+                    "La chiusura delle prenotazioni non può essere successiva alla data dell'evento.");
+        }
     }
 
     private String storePoster(MultipartFile poster) {

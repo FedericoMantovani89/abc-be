@@ -18,8 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -55,10 +59,17 @@ public class ShowService {
         return ShowDetailDto.from(activeShow(id));
     }
 
+    /**
+     * Grafie diverse dello stesso ruolo a meno di maiuscole/minuscole (es. "corpo di ballo" e
+     * "Corpo di ballo") sono lo stesso ruolo agli occhi dell'admin: una voce sola, con la
+     * grafia più frequente tra quelle presenti sullo spettacolo.
+     */
     @Transactional(readOnly = true)
     public List<String> castRoles(Long showId) {
         activeShow(showId);
-        return showRepository.findDistinctCastRoleNames(showId);
+        return mostFrequentSpellingByLowerCase(showRepository.findCastRoleNames(showId)).values().stream()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList();
     }
 
     @Transactional
@@ -169,17 +180,49 @@ public class ShowService {
         // Il cast viene sostituito integralmente (orphanRemoval elimina i rimossi).
         show.getCast().clear();
         if (request.cast() != null) {
+            // Grafie già in uso altrove (per spettacolo diverso da questo): se il ruolo che
+            // sta per essere scritto esiste già a meno di maiuscole/minuscole, riusa quella
+            // invece di crearne una seconda. Calcolata una volta sola per salvataggio; questo
+            // spettacolo non compare perché il suo cast è stato appena svuotato sopra.
+            Map<String, String> canonicalByLowerCase = mostFrequentSpellingByLowerCase(
+                    showRepository.findCastRoleNamesExcludingShow(show.getId() != null ? show.getId() : -1L));
             int order = 0;
             for (var member : request.cast()) {
                 ShowCast cast = new ShowCast();
                 cast.setShow(show);
                 cast.setFirstName(member.firstName() != null ? member.firstName() : "");
                 cast.setLastName(member.lastName() != null ? member.lastName() : "");
-                cast.setRoleName(member.roleName());
+                cast.setRoleName(normalizeRoleName(member.roleName(), canonicalByLowerCase));
                 cast.setSortOrder(member.sortOrder() != null ? member.sortOrder() : order);
                 show.getCast().add(cast);
                 order++;
             }
         }
+    }
+
+    /**
+     * Spazi normalizzati (bordi e doppi interni tolti) e grafia riusata se il ruolo esiste
+     * già a meno di maiuscole/minuscole: prima tra i ruoli già incontrati in questo stesso
+     * salvataggio (registrati in {@code canonicalByLowerCase} mano a mano), poi tra quelli
+     * di altri spettacoli. Se non esiste ancora, la grafia data diventa quella canonica per
+     * il resto di questo salvataggio.
+     */
+    private String normalizeRoleName(String rawRoleName, Map<String, String> canonicalByLowerCase) {
+        String normalized = rawRoleName.trim().replaceAll("\\s+", " ");
+        String key = normalized.toLowerCase(Locale.ITALIAN);
+        return canonicalByLowerCase.computeIfAbsent(key, k -> normalized);
+    }
+
+    /** Per ogni ruolo a meno di maiuscole/minuscole, la grafia esatta più frequente tra quelle date. */
+    private static Map<String, String> mostFrequentSpellingByLowerCase(List<String> roleNames) {
+        Map<String, Map<String, Integer>> countsByLowerCase = new LinkedHashMap<>();
+        for (String roleName : roleNames) {
+            countsByLowerCase.computeIfAbsent(roleName.toLowerCase(Locale.ITALIAN), k -> new LinkedHashMap<>())
+                    .merge(roleName, 1, Integer::sum);
+        }
+        Map<String, String> mostFrequent = new HashMap<>();
+        countsByLowerCase.forEach((key, counts) -> mostFrequent.put(key,
+                counts.entrySet().stream().max(Map.Entry.comparingByValue()).orElseThrow().getKey()));
+        return mostFrequent;
     }
 }
