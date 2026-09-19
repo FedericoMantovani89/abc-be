@@ -48,7 +48,6 @@ class ShowServiceCastRoleTest {
         when(showRepository.findCastRoleNamesExcludingShow(anyLong()))
                 .thenReturn(List.of("Corpo di ballo", "Corpo di ballo", "Corpo di ballo"));
 
-        Show show = new Show();
         ShowUpsertRequest request = requestWithCast(List.of(
                 new CastMemberRequest("Giulia", "Bianchi", "corpo di BALLO", null)));
 
@@ -63,7 +62,6 @@ class ShowServiceCastRoleTest {
         when(showRepository.findCastRoleNamesExcludingShow(anyLong()))
                 .thenReturn(List.of("Corpo di ballo", "Corpo di ballo", "corpo di ballo"));
 
-        Show show = new Show();
         ShowUpsertRequest request = requestWithCast(List.of(
                 new CastMemberRequest("Giulia", "Bianchi", "CORPO DI BALLO", null)));
 

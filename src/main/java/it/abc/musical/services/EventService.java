@@ -107,6 +107,7 @@ public class EventService {
     }
 
     private void applyRequest(Event event, EventUpsertRequest request, Long userId) {
+        validateBookingWindow(request.bookingOpenAt(), request.bookingCloseAt(), request.eventDate());
         event.setTitle(request.title().trim());
         event.setDescription(request.description());
         event.setEventDate(request.eventDate());
@@ -114,7 +115,6 @@ public class EventService {
         event.setLocationAddress(request.locationAddress());
         event.setLocationCity(request.locationCity());
         event.setLocationProvince(request.locationProvince());
-        validateBookingWindow(request.bookingOpenAt(), request.bookingCloseAt(), request.eventDate());
         event.setBookingOpenAt(request.bookingOpenAt());
         event.setBookingCloseAt(request.bookingCloseAt());
         event.setBookingLink(request.bookingLink());
