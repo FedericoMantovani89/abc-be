@@ -18,6 +18,9 @@ public interface ShowRepository extends JpaRepository<Show, Long> {
 
     Optional<Show> findByIdAndDeletedAtIsNull(Long id);
 
-    @Query("select distinct c.roleName from ShowCast c where c.show.id = :showId order by c.roleName")
-    List<String> findDistinctCastRoleNames(@Param("showId") Long showId);
+    @Query("select c.roleName from ShowCast c where c.show.id = :showId")
+    List<String> findCastRoleNames(@Param("showId") Long showId);
+
+    @Query("select c.roleName from ShowCast c where c.show.id <> :excludeShowId")
+    List<String> findCastRoleNamesExcludingShow(@Param("excludeShowId") long excludeShowId);
 }
