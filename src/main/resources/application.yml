@@ -68,6 +68,8 @@ app:
   upload:
     chunk-size-mb: ${UPLOAD_CHUNK_SIZE_MB:8}
     session-ttl-hours: ${UPLOAD_SESSION_TTL_HOURS:24}
+  audit:
+    retention-months: ${AUDIT_LOG_RETENTION_MONTHS:12}
   admin:
     email: ${ADMIN_EMAIL:}
     password: ${ADMIN_PASSWORD:}

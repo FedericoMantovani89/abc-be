@@ -6,11 +6,16 @@ import it.abc.musical.util.AuthUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -18,6 +23,9 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
+
+    @Value("${app.audit.retention-months:12}")
+    private int retentionMonths;
 
     /** Registra un'azione admin; non solleva mai (l'audit non deve rompere l'operazione). */
     public void record(String action, String entityType, Long entityId) {
@@ -41,5 +49,14 @@ public class AuditLogService {
         } catch (RuntimeException e) {
             log.warn("Audit log fallito per {} {} {}", action, entityType, entityId, e);
         }
+    }
+
+    /** Pulizia notturna dei log più vecchi della soglia di conservazione (informativa privacy). */
+    @Scheduled(cron = "0 30 3 * * *")
+    @Transactional
+    public void purgeOldAuditLogs() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMonths(retentionMonths);
+        int deleted = auditLogRepository.deleteCreatedBefore(cutoff);
+        log.info("Purged {} audit log rows older than {} months", deleted, retentionMonths);
     }
 }
