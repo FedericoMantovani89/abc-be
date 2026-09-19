@@ -138,6 +138,26 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <compilerArgs>
+                        <!-- Tiene visibili i warning di javac ad ogni build. Niente -Werror:
+                             un warning non deve far fallire la build. -->
+                        <arg>-Xlint:all,-processing</arg>
+                        <arg>-Xlint:deprecation</arg>
+                        <!-- -processing e' escluso: l'unico annotation processor e' Lombok e non
+                             rivendica le annotazioni di Spring/JPA, quindi javac stampa ad ogni
+                             build un "No processor claimed any of these annotations" con l'elenco
+                             completo. E' rumore inevitabile, non segnala un problema. -->
+                        <!-- Rende esplicito cio' che javac gia' fa (annotation processing attivo
+                             perche' Lombok e' sul classpath) e toglie la nota "Annotation
+                             processing is enabled because one or more processors were found". -->
+                        <arg>-proc:full</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <!-- docker-java (usato da Testcontainers) richiede di default API 1.32,

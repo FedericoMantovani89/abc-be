@@ -48,7 +48,7 @@ class JwtTokenServiceTest {
 
         assertThat(jwt.getSubject()).isEqualTo("mario@example.com");
         assertThat(jwt.getClaimAsStringList("roles")).containsExactly("MEMBER");
-        assertThat((Object) jwt.getClaim("userId")).isEqualTo(42L);
+        assertThat(jwt.<Object>getClaim("userId")).isEqualTo(42L);
         assertThat(jwt.getClaimAsString("firstName")).isEqualTo("Mario");
         assertThat(jwt.getAudience()).containsExactly(JwtTokenService.AUDIENCE);
         assertThat(jwt.getClaimAsString("iss")).isEqualTo("abc-musical");
@@ -60,6 +60,6 @@ class JwtTokenServiceTest {
 
         assertThat(jwt.getSubject()).isEqualTo("mario@example.com");
         assertThat(jwt.getClaimAsStringList("roles")).containsExactly("MEMBER");
-        assertThat((Object) jwt.getClaim("userId")).isEqualTo(42L);
+        assertThat(jwt.<Object>getClaim("userId")).isEqualTo(42L);
     }
 }

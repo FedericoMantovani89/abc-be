@@ -12,6 +12,14 @@ import java.util.List;
 @Getter
 public class CustomUserDetails implements UserDetails {
 
+    private static final long serialVersionUID = 1L;
+
+    // UserDetails estende Serializable, ma User e' un'entita' JPA non Serializable.
+    // Qui e' accettabile: la sessione (SessionCreationPolicy.IF_REQUIRED) e' tenuta in
+    // memoria dal Tomcat embedded, che di default non la persiste su disco, quindi questo
+    // oggetto non viene mai serializzato davvero. Rendere il campo transient lo
+    // svuoterebbe dopo una deserializzazione: sarebbe un cambio di comportamento.
+    @SuppressWarnings("serial")
     private final User user;
 
     public CustomUserDetails(User user) {

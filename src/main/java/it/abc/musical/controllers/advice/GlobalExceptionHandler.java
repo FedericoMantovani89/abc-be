@@ -48,7 +48,7 @@ public class GlobalExceptionHandler {
                         .formatted(ex.getMaxUploadSize() / 1024 / 1024)
                         + "Riduci le dimensioni del file e riprova."
                 : "File troppo grande. Riduci le dimensioni del file e riprova.";
-        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
                 .body(Map.of("error", message));
     }
 
