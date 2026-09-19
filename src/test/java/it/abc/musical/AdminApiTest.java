@@ -160,4 +160,31 @@ class AdminApiTest {
                 .andExpect(jsonPath("$.fileName").value("regolamento.pdf"))
                 .andExpect(jsonPath("$.mimeType").value("application/pdf"));
     }
+
+    /**
+     * La lista admin degli spettacoli e' l'unico endpoint che restituisce una Page.
+     * Con spring.data.web.pageable.serialization-mode=via-dto la Page viene serializzata
+     * come PagedModel: i metadati stanno sotto "page", non piu' sparsi in cima.
+     */
+    @Test
+    @Order(8)
+    void adminShowsListIsSerializedAsPagedModel() throws Exception {
+        mockMvc.perform(get("/api/admin/shows").param("page", "0").param("size", "20")
+                        .with(asRole("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content[0].id").exists())
+                .andExpect(jsonPath("$.content[0].title").exists())
+                .andExpect(jsonPath("$.page.number").value(0))
+                .andExpect(jsonPath("$.page.size").value(20))
+                .andExpect(jsonPath("$.page.totalElements").isNumber())
+                .andExpect(jsonPath("$.page.totalPages").isNumber())
+                // la forma vecchia (PageImpl piatta) non deve piu' comparire
+                .andExpect(jsonPath("$.totalElements").doesNotExist())
+                .andExpect(jsonPath("$.totalPages").doesNotExist())
+                .andExpect(jsonPath("$.number").doesNotExist())
+                .andExpect(jsonPath("$.size").doesNotExist())
+                .andExpect(jsonPath("$.pageable").doesNotExist())
+                .andExpect(jsonPath("$.sort").doesNotExist());
+    }
 }

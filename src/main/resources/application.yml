@@ -12,6 +12,13 @@ spring:
       ddl-auto: validate        # Flyway gestisce lo schema
     open-in-view: false
 
+  data:
+    web:
+      pageable:
+        # VIA_DTO: serializza le Page come PagedModel ({content, page:{...}}).
+        # Necessario perche' Spring Data 4 avvisa che la forma di PageImpl non e' stabile.
+        serialization-mode: via-dto
+
   flyway:
     enabled: true
     locations: classpath:db/migration
