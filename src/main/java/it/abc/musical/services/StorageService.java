@@ -64,6 +64,27 @@ public class StorageService {
         return "/" + subdir + "/" + fileName;
     }
 
+    /**
+     * Copia un file gia' gestito (path nella forma restituita da store()) in un file nuovo con
+     * nome nuovo, nello stesso stile di store(): usata per clonare una locandina senza far
+     * transitare i byte dal client.
+     */
+    public String copy(String sourceRelativePath, String subdir) {
+        Path source = resolve(sourceRelativePath);
+        String extension = extensionOf(sourceRelativePath);
+        String fileName = UUID.randomUUID() + (extension.isEmpty() ? "" : "." + extension);
+        Path target = root.resolve(subdir).resolve(fileName).normalize();
+        if (!target.startsWith(root)) {
+            throw new IllegalArgumentException("Path non valido");
+        }
+        try {
+            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Copia file fallita", e);
+        }
+        return "/" + subdir + "/" + fileName;
+    }
+
     /** Risolve un path relativo (es. "/media/x.pdf") nel file assoluto su disco. */
     public Path resolve(String relativePath) {
         String clean = relativePath.startsWith("/") ? relativePath.substring(1) : relativePath;

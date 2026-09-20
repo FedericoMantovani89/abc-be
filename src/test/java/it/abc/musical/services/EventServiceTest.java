@@ -46,7 +46,7 @@ class EventServiceTest {
         return new EventUpsertRequest(
                 "Saggio di fine anno", null, eventDate, "Teatro Comunale",
                 null, null, null,
-                open, close, null, null, null, null, null);
+                open, close, null, null, null, null, null, null);
     }
 
     @Test

@@ -77,6 +77,8 @@ public class EventService {
         applyRequest(event, request, userId);
         if (poster != null && !poster.isEmpty()) {
             event.setPosterImageUrl(storePoster(poster));
+        } else if (request.posterSourceEventId() != null) {
+            event.setPosterImageUrl(clonePoster(request.posterSourceEventId()));
         }
         return eventRepository.save(event);
     }
@@ -156,5 +158,21 @@ public class EventService {
         }
         fileValidationService.validate(poster);
         return storageService.store(poster, StorageService.POSTERS_DIR);
+    }
+
+    /**
+     * Clona la locandina di un altro evento in un file nuovo e indipendente, senza far
+     * transitare i byte dal client. Chiamata solo da create(), dopo che applyRequest() ha
+     * già validato la finestra di prenotazione: se la richiesta viene rifiutata per quello,
+     * questo metodo non viene mai raggiunto e nessun file finisce copiato sul disco.
+     */
+    private String clonePoster(Long sourceEventId) {
+        Event source = eventRepository.findByIdAndDeletedAtIsNull(sourceEventId)
+                .orElseThrow(() -> new BadRequestException("Evento di origine non trovato"));
+        String sourcePosterUrl = source.getPosterImageUrl();
+        if (sourcePosterUrl == null || sourcePosterUrl.isBlank()) {
+            return null;
+        }
+        return storageService.copy(sourcePosterUrl, StorageService.POSTERS_DIR);
     }
 }
