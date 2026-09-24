@@ -25,6 +25,8 @@ public final class AdminEventDtos {
             String contactPhone,
             Long eventTypeId,
             Long showId,
-            Long posterSourceEventId) {
+            Long posterSourceEventId,
+            Integer heroFocusX,
+            Integer heroFocusY) {
     }
 }

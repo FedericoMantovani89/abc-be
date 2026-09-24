@@ -3,6 +3,7 @@ package it.abc.musical.services;
 import it.abc.musical.dto.AdminShowDtos.CastMemberRequest;
 import it.abc.musical.dto.AdminShowDtos.ShowUpsertRequest;
 import it.abc.musical.entities.Show;
+import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.repositories.ShowRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
@@ -38,7 +40,44 @@ class ShowServiceCastRoleTest {
         return new ShowUpsertRequest(
                 "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null,
-                cast, null, null, null, null);
+                cast, null, null, null, null, null, null);
+    }
+
+    private static ShowUpsertRequest requestWithHeroFocus(Integer heroFocusX, Integer heroFocusY) {
+        return new ShowUpsertRequest(
+                "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null,
+                null, null, null, null, null, heroFocusX, heroFocusY);
+    }
+
+    @Test
+    void rejectsHeroFocusWithOnlyOneCoordinate() {
+        assertThatThrownBy(() -> service.create(requestWithHeroFocus(30, null), 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Punto focale non valido");
+    }
+
+    @Test
+    void rejectsHeroFocusOutOfRange() {
+        assertThatThrownBy(() -> service.create(requestWithHeroFocus(-1, 50), 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Punto focale non valido");
+    }
+
+    @Test
+    void acceptsHeroFocusWhenBothCoordinatesAreNull() {
+        Show saved = service.create(requestWithHeroFocus(null, null), 1L);
+
+        assertThat(saved.getHeroFocusX()).isNull();
+        assertThat(saved.getHeroFocusY()).isNull();
+    }
+
+    @Test
+    void acceptsHeroFocusWhenBothCoordinatesAreInRange() {
+        Show saved = service.create(requestWithHeroFocus(0, 100), 1L);
+
+        assertThat(saved.getHeroFocusX()).isEqualTo(0);
+        assertThat(saved.getHeroFocusY()).isEqualTo(100);
     }
 
     /** Caso richiesto dal referto: salvando "corpo di BALLO" deve finire come "Corpo di ballo". */
