@@ -46,7 +46,7 @@ class EventServiceTest {
         return new EventUpsertRequest(
                 "Saggio di fine anno", null, eventDate, "Teatro Comunale",
                 null, null, null,
-                open, close, null, null, null, null, null, null, null, null);
+                open, close, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -113,7 +113,7 @@ class EventServiceTest {
         return new EventUpsertRequest(
                 "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
                 null, null, null, null, null, null, null, null, null, null, null,
-                heroFocusX, heroFocusY);
+                heroFocusX, heroFocusY, null, null);
     }
 
     @Test
@@ -144,6 +144,43 @@ class EventServiceTest {
 
         assertThat(saved.getHeroFocusX()).isEqualTo(20);
         assertThat(saved.getHeroFocusY()).isEqualTo(80);
+    }
+
+    private static EventUpsertRequest requestWithHeroZoom(Integer heroZoomDesktop, Integer heroZoomMobile) {
+        return new EventUpsertRequest(
+                "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, heroZoomDesktop, heroZoomMobile);
+    }
+
+    @Test
+    void rejectsHeroZoomDesktopOutOfRange() {
+        assertThatThrownBy(() -> service.create(requestWithHeroZoom(9, null), null, 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Zoom non valido");
+    }
+
+    @Test
+    void rejectsHeroZoomMobileOutOfRange() {
+        assertThatThrownBy(() -> service.create(requestWithHeroZoom(null, 301), null, 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Zoom non valido");
+    }
+
+    @Test
+    void acceptsHeroZoomWhenBothAreNull() {
+        Event saved = service.create(requestWithHeroZoom(null, null), null, 1L);
+
+        assertThat(saved.getHeroZoomDesktop()).isNull();
+        assertThat(saved.getHeroZoomMobile()).isNull();
+    }
+
+    @Test
+    void acceptsHeroZoomWhenIndependentlyInRange() {
+        Event saved = service.create(requestWithHeroZoom(10, 300), null, 1L);
+
+        assertThat(saved.getHeroZoomDesktop()).isEqualTo(10);
+        assertThat(saved.getHeroZoomMobile()).isEqualTo(300);
     }
 
     /**

@@ -40,14 +40,14 @@ class ShowServiceCastRoleTest {
         return new ShowUpsertRequest(
                 "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null,
-                cast, null, null, null, null, null, null);
+                cast, null, null, null, null, null, null, null, null);
     }
 
     private static ShowUpsertRequest requestWithHeroFocus(Integer heroFocusX, Integer heroFocusY) {
         return new ShowUpsertRequest(
                 "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null,
-                null, null, null, null, null, heroFocusX, heroFocusY);
+                null, null, null, null, null, heroFocusX, heroFocusY, null, null);
     }
 
     @Test
@@ -78,6 +78,43 @@ class ShowServiceCastRoleTest {
 
         assertThat(saved.getHeroFocusX()).isEqualTo(0);
         assertThat(saved.getHeroFocusY()).isEqualTo(100);
+    }
+
+    private static ShowUpsertRequest requestWithHeroZoom(Integer heroZoomDesktop, Integer heroZoomMobile) {
+        return new ShowUpsertRequest(
+                "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null,
+                null, null, null, null, null, null, null, heroZoomDesktop, heroZoomMobile);
+    }
+
+    @Test
+    void rejectsHeroZoomDesktopOutOfRange() {
+        assertThatThrownBy(() -> service.create(requestWithHeroZoom(9, null), 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Zoom non valido");
+    }
+
+    @Test
+    void rejectsHeroZoomMobileOutOfRange() {
+        assertThatThrownBy(() -> service.create(requestWithHeroZoom(null, 301), 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Zoom non valido");
+    }
+
+    @Test
+    void acceptsHeroZoomWhenBothAreNull() {
+        Show saved = service.create(requestWithHeroZoom(null, null), 1L);
+
+        assertThat(saved.getHeroZoomDesktop()).isNull();
+        assertThat(saved.getHeroZoomMobile()).isNull();
+    }
+
+    @Test
+    void acceptsHeroZoomWhenIndependentlyInRange() {
+        Show saved = service.create(requestWithHeroZoom(10, 300), 1L);
+
+        assertThat(saved.getHeroZoomDesktop()).isEqualTo(10);
+        assertThat(saved.getHeroZoomMobile()).isEqualTo(300);
     }
 
     /** Caso richiesto dal referto: salvando "corpo di BALLO" deve finire come "Corpo di ballo". */

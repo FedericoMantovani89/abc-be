@@ -13,7 +13,8 @@ public final class EventDtos {
             Long id, String title, LocalDateTime eventDate,
             String locationVenue, String locationCity, String locationProvince,
             String posterImageUrl, String eventTypeName, Long showId,
-            Integer heroFocusX, Integer heroFocusY) {
+            Integer heroFocusX, Integer heroFocusY,
+            Integer heroZoomDesktop, Integer heroZoomMobile) {
 
         public static EventSummaryDto from(Event e) {
             return new EventSummaryDto(e.getId(), e.getTitle(), e.getEventDate(),
@@ -21,7 +22,8 @@ public final class EventDtos {
                     e.getPosterImageUrl(),
                     e.getEventType() != null ? e.getEventType().getName() : null,
                     e.getShow() != null ? e.getShow().getId() : null,
-                    e.getHeroFocusX(), e.getHeroFocusY());
+                    e.getHeroFocusX(), e.getHeroFocusY(),
+                    e.getHeroZoomDesktop(), e.getHeroZoomMobile());
         }
     }
 
@@ -33,7 +35,9 @@ public final class EventDtos {
             Long eventTypeId, String eventTypeName,
             Long showId, String showTitle, String showPosterImageUrl,
             Integer heroFocusX, Integer heroFocusY,
-            Integer showHeroFocusX, Integer showHeroFocusY) {
+            Integer showHeroFocusX, Integer showHeroFocusY,
+            Integer heroZoomDesktop, Integer heroZoomMobile,
+            Integer showHeroZoomDesktop, Integer showHeroZoomMobile) {
 
         public static EventDetailDto from(Event e) {
             return new EventDetailDto(e.getId(), e.getTitle(), e.getDescription(), e.getEventDate(),
@@ -47,7 +51,10 @@ public final class EventDtos {
                     e.getShow() != null ? e.getShow().getPosterImageUrl() : null,
                     e.getHeroFocusX(), e.getHeroFocusY(),
                     e.getShow() != null ? e.getShow().getHeroFocusX() : null,
-                    e.getShow() != null ? e.getShow().getHeroFocusY() : null);
+                    e.getShow() != null ? e.getShow().getHeroFocusY() : null,
+                    e.getHeroZoomDesktop(), e.getHeroZoomMobile(),
+                    e.getShow() != null ? e.getShow().getHeroZoomDesktop() : null,
+                    e.getShow() != null ? e.getShow().getHeroZoomMobile() : null);
         }
     }
 }

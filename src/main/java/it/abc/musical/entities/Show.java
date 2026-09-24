@@ -79,6 +79,13 @@ public class Show {
     @Column(name = "hero_focus_y")
     private Integer heroFocusY;
 
+    /** Fattore di zoom della locandina in hero (percentuale sul cover odierno), null = 100. */
+    @Column(name = "hero_zoom_desktop")
+    private Integer heroZoomDesktop;
+
+    @Column(name = "hero_zoom_mobile")
+    private Integer heroZoomMobile;
+
     /** Flag admin: se true (e con locandina) lo spettacolo compare nel Repertorio della home. */
     @Column(name = "show_in_home", nullable = false)
     private boolean showInHome = false;

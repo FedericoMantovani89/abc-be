@@ -65,13 +65,15 @@ class EventServicePosterCloneTest {
     private static EventUpsertRequest requestWithBookingWindow(LocalDateTime bookingOpenAt, LocalDateTime bookingCloseAt) {
         return new EventUpsertRequest(
                 "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
-                null, null, null, bookingOpenAt, bookingCloseAt, null, null, null, null, null, null, null, null);
+                null, null, null, bookingOpenAt, bookingCloseAt, null, null, null, null, null, null, null, null,
+                null, null);
     }
 
     private static EventUpsertRequest requestWithPosterSource(Long posterSourceEventId) {
         return new EventUpsertRequest(
                 "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
-                null, null, null, null, null, null, null, null, null, null, posterSourceEventId, null, null);
+                null, null, null, null, null, null, null, null, null, null, posterSourceEventId, null, null,
+                null, null);
     }
 
     @Test
@@ -138,6 +140,22 @@ class EventServicePosterCloneTest {
     }
 
     @Test
+    void cloningViaPosterSourceEventIdAlsoCopiesTheHeroZoomFactors() throws IOException {
+        byte[] bytes = "contenuto-locandina-di-origine".getBytes();
+        MockMultipartFile originalUpload = new MockMultipartFile("poster", "locandina.jpg", "image/jpeg", bytes);
+        Event original = service.create(request(), originalUpload, 1L);
+        original.setId(56L);
+        original.setHeroZoomDesktop(120);
+        original.setHeroZoomMobile(150);
+        when(eventRepository.findByIdAndDeletedAtIsNull(56L)).thenReturn(Optional.of(original));
+
+        Event clone = service.create(requestWithPosterSource(56L), null, 1L);
+
+        assertThat(clone.getHeroZoomDesktop()).isEqualTo(120);
+        assertThat(clone.getHeroZoomMobile()).isEqualTo(150);
+    }
+
+    @Test
     void uploadedFileWinsOverPosterSourceEventId() throws IOException {
         byte[] originalBytes = "locandina-originale".getBytes();
         MockMultipartFile originalUpload = new MockMultipartFile("poster", "locandina.jpg", "image/jpeg", originalBytes);
@@ -168,7 +186,7 @@ class EventServicePosterCloneTest {
                 "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
                 null, null, null,
                 LocalDateTime.of(2027, 1, 5, 10, 0), LocalDateTime.of(2027, 1, 1, 10, 0),
-                null, null, null, null, null, 99L, null, null);
+                null, null, null, null, null, 99L, null, null, null, null);
 
         Path postersDir = uploadDir.resolve(StorageService.POSTERS_DIR);
         long filesBefore;

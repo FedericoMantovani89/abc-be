@@ -27,6 +27,8 @@ public final class AdminEventDtos {
             Long showId,
             Long posterSourceEventId,
             Integer heroFocusX,
-            Integer heroFocusY) {
+            Integer heroFocusY,
+            Integer heroZoomDesktop,
+            Integer heroZoomMobile) {
     }
 }

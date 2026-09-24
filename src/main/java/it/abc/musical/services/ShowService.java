@@ -170,8 +170,23 @@ public class ShowService {
         }
     }
 
+    /**
+     * Fattore di zoom della locandina in hero: desktop e mobile sono indipendenti fra loro e
+     * dal punto focale, ciascuno o assente (100, cioè invariato) o in 10..300.
+     */
+    private void validateHeroZoom(Integer heroZoomDesktop, Integer heroZoomMobile) {
+        if (!isValidZoom(heroZoomDesktop) || !isValidZoom(heroZoomMobile)) {
+            throw new BadRequestException("Zoom non valido");
+        }
+    }
+
+    private static boolean isValidZoom(Integer zoom) {
+        return zoom == null || (zoom >= 10 && zoom <= 300);
+    }
+
     private void applyRequest(Show show, ShowUpsertRequest request, Long userId) {
         validateHeroFocus(request.heroFocusX(), request.heroFocusY());
+        validateHeroZoom(request.heroZoomDesktop(), request.heroZoomMobile());
         show.setTitle(request.title().trim());
         show.setPlot(HtmlSanitizer.sanitize(request.plot() != null ? request.plot() : ""));
         show.setDurationMinutes(request.durationMinutes() != null ? request.durationMinutes() : 0);
@@ -194,6 +209,8 @@ public class ShowService {
         }
         show.setHeroFocusX(request.heroFocusX());
         show.setHeroFocusY(request.heroFocusY());
+        show.setHeroZoomDesktop(request.heroZoomDesktop());
+        show.setHeroZoomMobile(request.heroZoomMobile());
         show.setUpdatedBy(userId);
 
         // Il cast viene sostituito integralmente (orphanRemoval elimina i rimossi).

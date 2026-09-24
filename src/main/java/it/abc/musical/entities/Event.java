@@ -51,6 +51,13 @@ public class Event {
     @Column(name = "hero_focus_y")
     private Integer heroFocusY;
 
+    /** Fattore di zoom della locandina in hero (percentuale sul cover odierno), null = 100. */
+    @Column(name = "hero_zoom_desktop")
+    private Integer heroZoomDesktop;
+
+    @Column(name = "hero_zoom_mobile")
+    private Integer heroZoomMobile;
+
     @Column(name = "booking_open_at")
     private LocalDateTime bookingOpenAt;
 
