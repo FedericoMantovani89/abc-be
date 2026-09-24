@@ -40,14 +40,21 @@ class ShowServiceCastRoleTest {
         return new ShowUpsertRequest(
                 "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null,
-                cast, null, null, null, null, null, null, null, null);
+                cast, null, null, null, null, null, null, null, null, null, null);
     }
 
     private static ShowUpsertRequest requestWithHeroFocus(Integer heroFocusX, Integer heroFocusY) {
         return new ShowUpsertRequest(
                 "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null,
-                null, null, null, null, null, heroFocusX, heroFocusY, null, null);
+                null, null, null, null, null, heroFocusX, heroFocusY, null, null, null, null);
+    }
+
+    private static ShowUpsertRequest requestWithHeroFocusMobile(Integer heroFocusMobileX, Integer heroFocusMobileY) {
+        return new ShowUpsertRequest(
+                "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, heroFocusMobileX, heroFocusMobileY);
     }
 
     @Test
@@ -80,11 +87,41 @@ class ShowServiceCastRoleTest {
         assertThat(saved.getHeroFocusY()).isEqualTo(100);
     }
 
+    @Test
+    void rejectsHeroFocusMobileWithOnlyOneCoordinate() {
+        assertThatThrownBy(() -> service.create(requestWithHeroFocusMobile(30, null), 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Punto focale non valido");
+    }
+
+    @Test
+    void rejectsHeroFocusMobileOutOfRange() {
+        assertThatThrownBy(() -> service.create(requestWithHeroFocusMobile(-1, 50), 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Punto focale non valido");
+    }
+
+    @Test
+    void acceptsHeroFocusMobileWhenBothCoordinatesAreNull() {
+        Show saved = service.create(requestWithHeroFocusMobile(null, null), 1L);
+
+        assertThat(saved.getHeroFocusMobileX()).isNull();
+        assertThat(saved.getHeroFocusMobileY()).isNull();
+    }
+
+    @Test
+    void acceptsHeroFocusMobileWhenBothCoordinatesAreInRange() {
+        Show saved = service.create(requestWithHeroFocusMobile(0, 100), 1L);
+
+        assertThat(saved.getHeroFocusMobileX()).isEqualTo(0);
+        assertThat(saved.getHeroFocusMobileY()).isEqualTo(100);
+    }
+
     private static ShowUpsertRequest requestWithHeroZoom(Integer heroZoomDesktop, Integer heroZoomMobile) {
         return new ShowUpsertRequest(
                 "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null,
-                null, null, null, null, null, null, null, heroZoomDesktop, heroZoomMobile);
+                null, null, null, null, null, null, null, heroZoomDesktop, heroZoomMobile, null, null);
     }
 
     @Test

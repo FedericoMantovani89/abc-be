@@ -66,14 +66,14 @@ class EventServicePosterCloneTest {
         return new EventUpsertRequest(
                 "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
                 null, null, null, bookingOpenAt, bookingCloseAt, null, null, null, null, null, null, null, null,
-                null, null);
+                null, null, null, null);
     }
 
     private static EventUpsertRequest requestWithPosterSource(Long posterSourceEventId) {
         return new EventUpsertRequest(
                 "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
                 null, null, null, null, null, null, null, null, null, null, posterSourceEventId, null, null,
-                null, null);
+                null, null, null, null);
     }
 
     @Test
@@ -140,6 +140,22 @@ class EventServicePosterCloneTest {
     }
 
     @Test
+    void cloningViaPosterSourceEventIdAlsoCopiesTheHeroFocusMobilePoint() throws IOException {
+        byte[] bytes = "contenuto-locandina-di-origine".getBytes();
+        MockMultipartFile originalUpload = new MockMultipartFile("poster", "locandina.jpg", "image/jpeg", bytes);
+        Event original = service.create(request(), originalUpload, 1L);
+        original.setId(57L);
+        original.setHeroFocusMobileX(40);
+        original.setHeroFocusMobileY(60);
+        when(eventRepository.findByIdAndDeletedAtIsNull(57L)).thenReturn(Optional.of(original));
+
+        Event clone = service.create(requestWithPosterSource(57L), null, 1L);
+
+        assertThat(clone.getHeroFocusMobileX()).isEqualTo(40);
+        assertThat(clone.getHeroFocusMobileY()).isEqualTo(60);
+    }
+
+    @Test
     void cloningViaPosterSourceEventIdAlsoCopiesTheHeroZoomFactors() throws IOException {
         byte[] bytes = "contenuto-locandina-di-origine".getBytes();
         MockMultipartFile originalUpload = new MockMultipartFile("poster", "locandina.jpg", "image/jpeg", bytes);
@@ -186,7 +202,7 @@ class EventServicePosterCloneTest {
                 "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
                 null, null, null,
                 LocalDateTime.of(2027, 1, 5, 10, 0), LocalDateTime.of(2027, 1, 1, 10, 0),
-                null, null, null, null, null, 99L, null, null, null, null);
+                null, null, null, null, null, 99L, null, null, null, null, null, null);
 
         Path postersDir = uploadDir.resolve(StorageService.POSTERS_DIR);
         long filesBefore;

@@ -46,7 +46,7 @@ class EventServiceTest {
         return new EventUpsertRequest(
                 "Saggio di fine anno", null, eventDate, "Teatro Comunale",
                 null, null, null,
-                open, close, null, null, null, null, null, null, null, null, null, null);
+                open, close, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -113,7 +113,14 @@ class EventServiceTest {
         return new EventUpsertRequest(
                 "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
                 null, null, null, null, null, null, null, null, null, null, null,
-                heroFocusX, heroFocusY, null, null);
+                heroFocusX, heroFocusY, null, null, null, null);
+    }
+
+    private static EventUpsertRequest requestWithHeroFocusMobile(Integer heroFocusMobileX, Integer heroFocusMobileY) {
+        return new EventUpsertRequest(
+                "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, heroFocusMobileX, heroFocusMobileY);
     }
 
     @Test
@@ -146,11 +153,41 @@ class EventServiceTest {
         assertThat(saved.getHeroFocusY()).isEqualTo(80);
     }
 
+    @Test
+    void rejectsHeroFocusMobileWithOnlyOneCoordinate() {
+        assertThatThrownBy(() -> service.create(requestWithHeroFocusMobile(30, null), null, 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Punto focale non valido");
+    }
+
+    @Test
+    void rejectsHeroFocusMobileOutOfRange() {
+        assertThatThrownBy(() -> service.create(requestWithHeroFocusMobile(30, 101), null, 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Punto focale non valido");
+    }
+
+    @Test
+    void acceptsHeroFocusMobileWhenBothCoordinatesAreNull() {
+        Event saved = service.create(requestWithHeroFocusMobile(null, null), null, 1L);
+
+        assertThat(saved.getHeroFocusMobileX()).isNull();
+        assertThat(saved.getHeroFocusMobileY()).isNull();
+    }
+
+    @Test
+    void acceptsHeroFocusMobileWhenBothCoordinatesAreInRange() {
+        Event saved = service.create(requestWithHeroFocusMobile(20, 80), null, 1L);
+
+        assertThat(saved.getHeroFocusMobileX()).isEqualTo(20);
+        assertThat(saved.getHeroFocusMobileY()).isEqualTo(80);
+    }
+
     private static EventUpsertRequest requestWithHeroZoom(Integer heroZoomDesktop, Integer heroZoomMobile) {
         return new EventUpsertRequest(
                 "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, heroZoomDesktop, heroZoomMobile);
+                null, null, heroZoomDesktop, heroZoomMobile, null, null);
     }
 
     @Test

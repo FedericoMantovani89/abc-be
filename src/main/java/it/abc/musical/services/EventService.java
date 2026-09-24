@@ -84,6 +84,10 @@ public class EventService {
                 copyHeroFocusFromSource(event, request.posterSourceEventId());
             }
             if (event.getPosterImageUrl() != null
+                    && event.getHeroFocusMobileX() == null && event.getHeroFocusMobileY() == null) {
+                copyHeroFocusMobileFromSource(event, request.posterSourceEventId());
+            }
+            if (event.getPosterImageUrl() != null
                     && event.getHeroZoomDesktop() == null && event.getHeroZoomMobile() == null) {
                 copyHeroZoomFromSource(event, request.posterSourceEventId());
             }
@@ -119,6 +123,7 @@ public class EventService {
     private void applyRequest(Event event, EventUpsertRequest request, Long userId) {
         validateBookingWindow(request.bookingOpenAt(), request.bookingCloseAt(), request.eventDate());
         validateHeroFocus(request.heroFocusX(), request.heroFocusY());
+        validateHeroFocusMobile(request.heroFocusMobileX(), request.heroFocusMobileY());
         validateHeroZoom(request.heroZoomDesktop(), request.heroZoomMobile());
         event.setTitle(request.title().trim());
         event.setDescription(request.description());
@@ -142,6 +147,8 @@ public class EventService {
                 : null);
         event.setHeroFocusX(request.heroFocusX());
         event.setHeroFocusY(request.heroFocusY());
+        event.setHeroFocusMobileX(request.heroFocusMobileX());
+        event.setHeroFocusMobileY(request.heroFocusMobileY());
         event.setHeroZoomDesktop(request.heroZoomDesktop());
         event.setHeroZoomMobile(request.heroZoomMobile());
         event.setUpdatedBy(userId);
@@ -157,6 +164,20 @@ public class EventService {
         boolean bothInRange = heroFocusX != null && heroFocusY != null
                 && heroFocusX >= 0 && heroFocusX <= 100
                 && heroFocusY >= 0 && heroFocusY <= 100;
+        if (!bothNull && !bothInRange) {
+            throw new BadRequestException("Punto focale non valido");
+        }
+    }
+
+    /**
+     * Punto focale mobile: stessa regola del punto focale desktop, ma indipendente da esso
+     * (ritaglio separato per il telefono).
+     */
+    private void validateHeroFocusMobile(Integer heroFocusMobileX, Integer heroFocusMobileY) {
+        boolean bothNull = heroFocusMobileX == null && heroFocusMobileY == null;
+        boolean bothInRange = heroFocusMobileX != null && heroFocusMobileY != null
+                && heroFocusMobileX >= 0 && heroFocusMobileX <= 100
+                && heroFocusMobileY >= 0 && heroFocusMobileY <= 100;
         if (!bothNull && !bothInRange) {
             throw new BadRequestException("Punto focale non valido");
         }
@@ -228,6 +249,17 @@ public class EventService {
         eventRepository.findByIdAndDeletedAtIsNull(sourceEventId).ifPresent(source -> {
             event.setHeroFocusX(source.getHeroFocusX());
             event.setHeroFocusY(source.getHeroFocusY());
+        });
+    }
+
+    /**
+     * Come copyHeroFocusFromSource, ma per il punto focale mobile: indipendente da quello
+     * desktop, viaggia insieme alla locandina clonata con la stessa regola.
+     */
+    private void copyHeroFocusMobileFromSource(Event event, Long sourceEventId) {
+        eventRepository.findByIdAndDeletedAtIsNull(sourceEventId).ifPresent(source -> {
+            event.setHeroFocusMobileX(source.getHeroFocusMobileX());
+            event.setHeroFocusMobileY(source.getHeroFocusMobileY());
         });
     }
 

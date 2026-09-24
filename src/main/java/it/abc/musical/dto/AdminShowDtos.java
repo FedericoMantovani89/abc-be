@@ -40,7 +40,9 @@ public final class AdminShowDtos {
             Integer heroFocusX,
             Integer heroFocusY,
             Integer heroZoomDesktop,
-            Integer heroZoomMobile) {
+            Integer heroZoomMobile,
+            Integer heroFocusMobileX,
+            Integer heroFocusMobileY) {
     }
 
     public record GalleryImageAttachRequest(@NotBlank String imagePath, String caption) {
@@ -49,13 +51,15 @@ public final class AdminShowDtos {
     public record AdminShowListDto(
             Long id, String title, Integer productionYear, String posterImageUrl,
             int castSize, LocalDateTime updatedAt, Integer heroFocusX, Integer heroFocusY,
-            Integer heroZoomDesktop, Integer heroZoomMobile) {
+            Integer heroZoomDesktop, Integer heroZoomMobile,
+            Integer heroFocusMobileX, Integer heroFocusMobileY) {
 
         public static AdminShowListDto from(Show s) {
             return new AdminShowListDto(s.getId(), s.getTitle(), s.getProductionYear(),
                     s.getPosterImageUrl(), s.getCast().size(), s.getUpdatedAt(),
                     s.getHeroFocusX(), s.getHeroFocusY(),
-                    s.getHeroZoomDesktop(), s.getHeroZoomMobile());
+                    s.getHeroZoomDesktop(), s.getHeroZoomMobile(),
+                    s.getHeroFocusMobileX(), s.getHeroFocusMobileY());
         }
     }
 }

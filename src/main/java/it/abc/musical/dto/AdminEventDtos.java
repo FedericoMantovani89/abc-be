@@ -29,6 +29,8 @@ public final class AdminEventDtos {
             Integer heroFocusX,
             Integer heroFocusY,
             Integer heroZoomDesktop,
-            Integer heroZoomMobile) {
+            Integer heroZoomMobile,
+            Integer heroFocusMobileX,
+            Integer heroFocusMobileY) {
     }
 }
