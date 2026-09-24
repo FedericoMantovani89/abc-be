@@ -51,6 +51,13 @@ public class Event {
     @Column(name = "hero_focus_y")
     private Integer heroFocusY;
 
+    /** Punto focale della locandina per mobile (percentuale 0..100), null = centro. Indipendente da hero_focus_x/y. */
+    @Column(name = "hero_focus_mobile_x")
+    private Integer heroFocusMobileX;
+
+    @Column(name = "hero_focus_mobile_y")
+    private Integer heroFocusMobileY;
+
     /** Fattore di zoom della locandina in hero (percentuale sul cover odierno), null = 100. */
     @Column(name = "hero_zoom_desktop")
     private Integer heroZoomDesktop;

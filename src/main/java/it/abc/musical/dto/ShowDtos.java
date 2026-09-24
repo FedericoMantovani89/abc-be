@@ -21,13 +21,15 @@ public final class ShowDtos {
             Long id, String title, Integer productionYear, int durationMinutes,
             Integer ageRecommendation, String posterImageUrl, String director, LocalDateTime createdAt,
             boolean showInHome, Integer heroFocusX, Integer heroFocusY,
-            Integer heroZoomDesktop, Integer heroZoomMobile) {
+            Integer heroZoomDesktop, Integer heroZoomMobile,
+            Integer heroFocusMobileX, Integer heroFocusMobileY) {
 
         public static ShowSummaryDto from(Show s) {
             return new ShowSummaryDto(s.getId(), s.getTitle(), s.getProductionYear(),
                     s.getDurationMinutes(), s.getAgeRecommendation(), s.getPosterImageUrl(),
                     s.getDirector(), s.getCreatedAt(), s.isShowInHome(), s.getHeroFocusX(), s.getHeroFocusY(),
-                    s.getHeroZoomDesktop(), s.getHeroZoomMobile());
+                    s.getHeroZoomDesktop(), s.getHeroZoomMobile(),
+                    s.getHeroFocusMobileX(), s.getHeroFocusMobileY());
         }
     }
 
@@ -38,7 +40,8 @@ public final class ShowDtos {
             String trailerUrl, String officialWebsiteUrl, String reviewsUrl, String socialMediaUrl,
             String posterImageUrl, boolean showInHome, List<ContentWarning> contentWarnings,
             List<CastMemberDto> cast, List<ShowImageDto> images, Integer heroFocusX, Integer heroFocusY,
-            Integer heroZoomDesktop, Integer heroZoomMobile) {
+            Integer heroZoomDesktop, Integer heroZoomMobile,
+            Integer heroFocusMobileX, Integer heroFocusMobileY) {
 
         public static ShowDetailDto from(Show s) {
             return new ShowDetailDto(
@@ -56,7 +59,8 @@ public final class ShowDtos {
                                     i.getDisplayOrder()))
                             .toList(),
                     s.getHeroFocusX(), s.getHeroFocusY(),
-                    s.getHeroZoomDesktop(), s.getHeroZoomMobile());
+                    s.getHeroZoomDesktop(), s.getHeroZoomMobile(),
+                    s.getHeroFocusMobileX(), s.getHeroFocusMobileY());
         }
     }
 }

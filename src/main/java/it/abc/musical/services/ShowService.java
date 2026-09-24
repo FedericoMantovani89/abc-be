@@ -171,6 +171,20 @@ public class ShowService {
     }
 
     /**
+     * Punto focale mobile: stessa regola del punto focale desktop, ma indipendente da esso
+     * (ritaglio separato per il telefono).
+     */
+    private void validateHeroFocusMobile(Integer heroFocusMobileX, Integer heroFocusMobileY) {
+        boolean bothNull = heroFocusMobileX == null && heroFocusMobileY == null;
+        boolean bothInRange = heroFocusMobileX != null && heroFocusMobileY != null
+                && heroFocusMobileX >= 0 && heroFocusMobileX <= 100
+                && heroFocusMobileY >= 0 && heroFocusMobileY <= 100;
+        if (!bothNull && !bothInRange) {
+            throw new BadRequestException("Punto focale non valido");
+        }
+    }
+
+    /**
      * Fattore di zoom della locandina in hero: desktop e mobile sono indipendenti fra loro e
      * dal punto focale, ciascuno o assente (100, cioè invariato) o in 10..300.
      */
@@ -186,6 +200,7 @@ public class ShowService {
 
     private void applyRequest(Show show, ShowUpsertRequest request, Long userId) {
         validateHeroFocus(request.heroFocusX(), request.heroFocusY());
+        validateHeroFocusMobile(request.heroFocusMobileX(), request.heroFocusMobileY());
         validateHeroZoom(request.heroZoomDesktop(), request.heroZoomMobile());
         show.setTitle(request.title().trim());
         show.setPlot(HtmlSanitizer.sanitize(request.plot() != null ? request.plot() : ""));
@@ -209,6 +224,8 @@ public class ShowService {
         }
         show.setHeroFocusX(request.heroFocusX());
         show.setHeroFocusY(request.heroFocusY());
+        show.setHeroFocusMobileX(request.heroFocusMobileX());
+        show.setHeroFocusMobileY(request.heroFocusMobileY());
         show.setHeroZoomDesktop(request.heroZoomDesktop());
         show.setHeroZoomMobile(request.heroZoomMobile());
         show.setUpdatedBy(userId);
