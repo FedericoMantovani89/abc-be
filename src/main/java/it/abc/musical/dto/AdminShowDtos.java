@@ -38,7 +38,9 @@ public final class AdminShowDtos {
             String posterPath,
             Boolean showInHome,
             Integer heroFocusX,
-            Integer heroFocusY) {
+            Integer heroFocusY,
+            Integer heroZoomDesktop,
+            Integer heroZoomMobile) {
     }
 
     public record GalleryImageAttachRequest(@NotBlank String imagePath, String caption) {
@@ -46,12 +48,14 @@ public final class AdminShowDtos {
 
     public record AdminShowListDto(
             Long id, String title, Integer productionYear, String posterImageUrl,
-            int castSize, LocalDateTime updatedAt, Integer heroFocusX, Integer heroFocusY) {
+            int castSize, LocalDateTime updatedAt, Integer heroFocusX, Integer heroFocusY,
+            Integer heroZoomDesktop, Integer heroZoomMobile) {
 
         public static AdminShowListDto from(Show s) {
             return new AdminShowListDto(s.getId(), s.getTitle(), s.getProductionYear(),
                     s.getPosterImageUrl(), s.getCast().size(), s.getUpdatedAt(),
-                    s.getHeroFocusX(), s.getHeroFocusY());
+                    s.getHeroFocusX(), s.getHeroFocusY(),
+                    s.getHeroZoomDesktop(), s.getHeroZoomMobile());
         }
     }
 }

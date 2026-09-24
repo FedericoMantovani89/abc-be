@@ -83,6 +83,10 @@ public class EventService {
                     && event.getHeroFocusX() == null && event.getHeroFocusY() == null) {
                 copyHeroFocusFromSource(event, request.posterSourceEventId());
             }
+            if (event.getPosterImageUrl() != null
+                    && event.getHeroZoomDesktop() == null && event.getHeroZoomMobile() == null) {
+                copyHeroZoomFromSource(event, request.posterSourceEventId());
+            }
         }
         return eventRepository.save(event);
     }
@@ -115,6 +119,7 @@ public class EventService {
     private void applyRequest(Event event, EventUpsertRequest request, Long userId) {
         validateBookingWindow(request.bookingOpenAt(), request.bookingCloseAt(), request.eventDate());
         validateHeroFocus(request.heroFocusX(), request.heroFocusY());
+        validateHeroZoom(request.heroZoomDesktop(), request.heroZoomMobile());
         event.setTitle(request.title().trim());
         event.setDescription(request.description());
         event.setEventDate(request.eventDate());
@@ -137,6 +142,8 @@ public class EventService {
                 : null);
         event.setHeroFocusX(request.heroFocusX());
         event.setHeroFocusY(request.heroFocusY());
+        event.setHeroZoomDesktop(request.heroZoomDesktop());
+        event.setHeroZoomMobile(request.heroZoomMobile());
         event.setUpdatedBy(userId);
     }
 
@@ -153,6 +160,20 @@ public class EventService {
         if (!bothNull && !bothInRange) {
             throw new BadRequestException("Punto focale non valido");
         }
+    }
+
+    /**
+     * Fattore di zoom della locandina in hero: desktop e mobile sono indipendenti fra loro e
+     * dal punto focale, ciascuno o assente (100, cioè invariato) o in 10..300.
+     */
+    private void validateHeroZoom(Integer heroZoomDesktop, Integer heroZoomMobile) {
+        if (!isValidZoom(heroZoomDesktop) || !isValidZoom(heroZoomMobile)) {
+            throw new BadRequestException("Zoom non valido");
+        }
+    }
+
+    private static boolean isValidZoom(Integer zoom) {
+        return zoom == null || (zoom >= 10 && zoom <= 300);
     }
 
     /**
@@ -207,6 +228,18 @@ public class EventService {
         eventRepository.findByIdAndDeletedAtIsNull(sourceEventId).ifPresent(source -> {
             event.setHeroFocusX(source.getHeroFocusX());
             event.setHeroFocusY(source.getHeroFocusY());
+        });
+    }
+
+    /**
+     * Come copyHeroFocusFromSource, ma per i due fattori di zoom: hanno senso solo insieme
+     * all'immagine a cui si riferiscono, quindi viaggiano con essa quando la locandina viene
+     * clonata e la richiesta non ne porta già uno proprio.
+     */
+    private void copyHeroZoomFromSource(Event event, Long sourceEventId) {
+        eventRepository.findByIdAndDeletedAtIsNull(sourceEventId).ifPresent(source -> {
+            event.setHeroZoomDesktop(source.getHeroZoomDesktop());
+            event.setHeroZoomMobile(source.getHeroZoomMobile());
         });
     }
 }
