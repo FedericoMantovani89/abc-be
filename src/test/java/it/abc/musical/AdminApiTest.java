@@ -218,4 +218,36 @@ class AdminApiTest {
                                 """))
                 .andExpect(status().isBadRequest());
     }
+
+    /**
+     * Round-trip dello zoom della locandina in hero (hero_zoom_desktop/mobile, V006):
+     * conferma che Flyway ha applicato la migration e che il range 10..300 e' applicato
+     * a livello di validazione service (i due valori sono indipendenti, a differenza
+     * del punto focale).
+     */
+    @Test
+    @Order(10)
+    void heroZoomRoundTripThenRejectsInvalidValue() throws Exception {
+        String createResponse = mockMvc.perform(post("/api/admin/shows").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("""
+                                {"title": "Spettacolo con zoom locandina", "heroZoomDesktop": 80, "heroZoomMobile": 60}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists())
+                .andReturn().getResponse().getContentAsString();
+        Long showId = ((Number) com.jayway.jsonpath.JsonPath.read(createResponse, "$.id")).longValue();
+
+        mockMvc.perform(get("/api/admin/shows/" + showId).with(asRole("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.heroZoomDesktop").value(80))
+                .andExpect(jsonPath("$.heroZoomMobile").value(60));
+
+        mockMvc.perform(post("/api/admin/shows").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("""
+                                {"title": "Zoom non valido", "heroZoomDesktop": 5}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
 }
