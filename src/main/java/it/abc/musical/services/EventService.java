@@ -79,6 +79,10 @@ public class EventService {
             event.setPosterImageUrl(storePoster(poster));
         } else if (request.posterSourceEventId() != null) {
             event.setPosterImageUrl(clonePoster(request.posterSourceEventId()));
+            if (event.getPosterImageUrl() != null
+                    && event.getHeroFocusX() == null && event.getHeroFocusY() == null) {
+                copyHeroFocusFromSource(event, request.posterSourceEventId());
+            }
         }
         return eventRepository.save(event);
     }
@@ -110,6 +114,7 @@ public class EventService {
 
     private void applyRequest(Event event, EventUpsertRequest request, Long userId) {
         validateBookingWindow(request.bookingOpenAt(), request.bookingCloseAt(), request.eventDate());
+        validateHeroFocus(request.heroFocusX(), request.heroFocusY());
         event.setTitle(request.title().trim());
         event.setDescription(request.description());
         event.setEventDate(request.eventDate());
@@ -130,7 +135,24 @@ public class EventService {
                 ? showRepository.findByIdAndDeletedAtIsNull(request.showId())
                         .orElseThrow(() -> new NotFoundException("Spettacolo non trovato"))
                 : null);
+        event.setHeroFocusX(request.heroFocusX());
+        event.setHeroFocusY(request.heroFocusY());
         event.setUpdatedBy(userId);
+    }
+
+    /**
+     * Punto focale della locandina: entrambi assenti (centro) oppure entrambi in 0..100.
+     * Un solo valore presente, o fuori range, è un input incoerente e va rifiutato qui invece
+     * che lasciarlo diventare un crop CSS silenziosamente sbagliato lato frontend.
+     */
+    private void validateHeroFocus(Integer heroFocusX, Integer heroFocusY) {
+        boolean bothNull = heroFocusX == null && heroFocusY == null;
+        boolean bothInRange = heroFocusX != null && heroFocusY != null
+                && heroFocusX >= 0 && heroFocusX <= 100
+                && heroFocusY >= 0 && heroFocusY <= 100;
+        if (!bothNull && !bothInRange) {
+            throw new BadRequestException("Punto focale non valido");
+        }
     }
 
     /**
@@ -174,5 +196,17 @@ public class EventService {
             return null;
         }
         return storageService.copy(sourcePosterUrl, StorageService.POSTERS_DIR);
+    }
+
+    /**
+     * Il punto focale ha senso solo insieme all'immagine a cui si riferisce: quando la
+     * locandina viene clonata da un altro evento e la richiesta non porta già un proprio punto
+     * focale, viaggia insieme ad essa quello dell'evento di origine invece di restare vuoto.
+     */
+    private void copyHeroFocusFromSource(Event event, Long sourceEventId) {
+        eventRepository.findByIdAndDeletedAtIsNull(sourceEventId).ifPresent(source -> {
+            event.setHeroFocusX(source.getHeroFocusX());
+            event.setHeroFocusY(source.getHeroFocusY());
+        });
     }
 }

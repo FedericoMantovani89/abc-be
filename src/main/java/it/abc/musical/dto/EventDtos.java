@@ -12,14 +12,16 @@ public final class EventDtos {
     public record EventSummaryDto(
             Long id, String title, LocalDateTime eventDate,
             String locationVenue, String locationCity, String locationProvince,
-            String posterImageUrl, String eventTypeName, Long showId) {
+            String posterImageUrl, String eventTypeName, Long showId,
+            Integer heroFocusX, Integer heroFocusY) {
 
         public static EventSummaryDto from(Event e) {
             return new EventSummaryDto(e.getId(), e.getTitle(), e.getEventDate(),
                     e.getLocationVenue(), e.getLocationCity(), e.getLocationProvince(),
                     e.getPosterImageUrl(),
                     e.getEventType() != null ? e.getEventType().getName() : null,
-                    e.getShow() != null ? e.getShow().getId() : null);
+                    e.getShow() != null ? e.getShow().getId() : null,
+                    e.getHeroFocusX(), e.getHeroFocusY());
         }
     }
 
@@ -29,7 +31,9 @@ public final class EventDtos {
             String posterImageUrl, LocalDateTime bookingOpenAt, LocalDateTime bookingCloseAt,
             String bookingLink, String contactEmail, String contactPhone,
             Long eventTypeId, String eventTypeName,
-            Long showId, String showTitle, String showPosterImageUrl) {
+            Long showId, String showTitle, String showPosterImageUrl,
+            Integer heroFocusX, Integer heroFocusY,
+            Integer showHeroFocusX, Integer showHeroFocusY) {
 
         public static EventDetailDto from(Event e) {
             return new EventDetailDto(e.getId(), e.getTitle(), e.getDescription(), e.getEventDate(),
@@ -40,7 +44,10 @@ public final class EventDtos {
                     e.getEventType() != null ? e.getEventType().getName() : null,
                     e.getShow() != null ? e.getShow().getId() : null,
                     e.getShow() != null ? e.getShow().getTitle() : null,
-                    e.getShow() != null ? e.getShow().getPosterImageUrl() : null);
+                    e.getShow() != null ? e.getShow().getPosterImageUrl() : null,
+                    e.getHeroFocusX(), e.getHeroFocusY(),
+                    e.getShow() != null ? e.getShow().getHeroFocusX() : null,
+                    e.getShow() != null ? e.getShow().getHeroFocusY() : null);
         }
     }
 }

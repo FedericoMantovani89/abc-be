@@ -187,4 +187,35 @@ class AdminApiTest {
                 .andExpect(jsonPath("$.pageable").doesNotExist())
                 .andExpect(jsonPath("$.sort").doesNotExist());
     }
+
+    /**
+     * Round-trip del punto focale della locandina (hero_focus_x/y, V005): conferma che
+     * Flyway ha applicato la migration (colonne esistenti, entity/DTO allineati) e che i
+     * CHECK sul range e sulla coppia sono applicati anche a livello di validazione service.
+     */
+    @Test
+    @Order(9)
+    void heroFocusPointRoundTripThenRejectsInvalidPair() throws Exception {
+        String createResponse = mockMvc.perform(post("/api/admin/shows").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("""
+                                {"title": "Spettacolo con punto focale", "heroFocusX": 50, "heroFocusY": 15}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists())
+                .andReturn().getResponse().getContentAsString();
+        Long showId = ((Number) com.jayway.jsonpath.JsonPath.read(createResponse, "$.id")).longValue();
+
+        mockMvc.perform(get("/api/admin/shows/" + showId).with(asRole("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.heroFocusX").value(50))
+                .andExpect(jsonPath("$.heroFocusY").value(15));
+
+        mockMvc.perform(post("/api/admin/shows").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("""
+                                {"title": "Punto focale incompleto", "heroFocusX": 50, "heroFocusY": null}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
 }

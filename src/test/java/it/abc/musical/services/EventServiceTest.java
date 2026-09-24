@@ -46,7 +46,7 @@ class EventServiceTest {
         return new EventUpsertRequest(
                 "Saggio di fine anno", null, eventDate, "Teatro Comunale",
                 null, null, null,
-                open, close, null, null, null, null, null, null);
+                open, close, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -107,6 +107,43 @@ class EventServiceTest {
 
         assertThat(saved.getBookingOpenAt()).isNull();
         assertThat(saved.getBookingCloseAt()).isEqualTo(LocalDateTime.of(2027, 1, 8, 0, 0));
+    }
+
+    private static EventUpsertRequest requestWithHeroFocus(Integer heroFocusX, Integer heroFocusY) {
+        return new EventUpsertRequest(
+                "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
+                null, null, null, null, null, null, null, null, null, null, null,
+                heroFocusX, heroFocusY);
+    }
+
+    @Test
+    void rejectsHeroFocusWithOnlyOneCoordinate() {
+        assertThatThrownBy(() -> service.create(requestWithHeroFocus(30, null), null, 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Punto focale non valido");
+    }
+
+    @Test
+    void rejectsHeroFocusOutOfRange() {
+        assertThatThrownBy(() -> service.create(requestWithHeroFocus(30, 101), null, 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Punto focale non valido");
+    }
+
+    @Test
+    void acceptsHeroFocusWhenBothCoordinatesAreNull() {
+        Event saved = service.create(requestWithHeroFocus(null, null), null, 1L);
+
+        assertThat(saved.getHeroFocusX()).isNull();
+        assertThat(saved.getHeroFocusY()).isNull();
+    }
+
+    @Test
+    void acceptsHeroFocusWhenBothCoordinatesAreInRange() {
+        Event saved = service.create(requestWithHeroFocus(20, 80), null, 1L);
+
+        assertThat(saved.getHeroFocusX()).isEqualTo(20);
+        assertThat(saved.getHeroFocusY()).isEqualTo(80);
     }
 
     /**

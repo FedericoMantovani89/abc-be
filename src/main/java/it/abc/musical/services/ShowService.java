@@ -7,6 +7,7 @@ import it.abc.musical.dto.ShowDtos.ShowSummaryDto;
 import it.abc.musical.entities.Show;
 import it.abc.musical.entities.ShowCast;
 import it.abc.musical.entities.ShowImage;
+import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.ShowRepository;
 import it.abc.musical.util.HtmlSanitizer;
@@ -154,7 +155,23 @@ public class ShowService {
                 .orElseThrow(() -> new NotFoundException("Spettacolo non trovato"));
     }
 
+    /**
+     * Punto focale della locandina: entrambi assenti (centro) oppure entrambi in 0..100.
+     * Un solo valore presente, o fuori range, è un input incoerente e va rifiutato qui invece
+     * che lasciarlo diventare un crop CSS silenziosamente sbagliato lato frontend.
+     */
+    private void validateHeroFocus(Integer heroFocusX, Integer heroFocusY) {
+        boolean bothNull = heroFocusX == null && heroFocusY == null;
+        boolean bothInRange = heroFocusX != null && heroFocusY != null
+                && heroFocusX >= 0 && heroFocusX <= 100
+                && heroFocusY >= 0 && heroFocusY <= 100;
+        if (!bothNull && !bothInRange) {
+            throw new BadRequestException("Punto focale non valido");
+        }
+    }
+
     private void applyRequest(Show show, ShowUpsertRequest request, Long userId) {
+        validateHeroFocus(request.heroFocusX(), request.heroFocusY());
         show.setTitle(request.title().trim());
         show.setPlot(HtmlSanitizer.sanitize(request.plot() != null ? request.plot() : ""));
         show.setDurationMinutes(request.durationMinutes() != null ? request.durationMinutes() : 0);
@@ -175,6 +192,8 @@ public class ShowService {
         if (request.showInHome() != null) {
             show.setShowInHome(request.showInHome());
         }
+        show.setHeroFocusX(request.heroFocusX());
+        show.setHeroFocusY(request.heroFocusY());
         show.setUpdatedBy(userId);
 
         // Il cast viene sostituito integralmente (orphanRemoval elimina i rimossi).

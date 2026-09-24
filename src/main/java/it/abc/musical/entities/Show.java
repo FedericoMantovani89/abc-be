@@ -72,6 +72,13 @@ public class Show {
     @Column(name = "poster_image_url", length = 512)
     private String posterImageUrl;
 
+    /** Punto focale della locandina (percentuale 0..100), null = centro. */
+    @Column(name = "hero_focus_x")
+    private Integer heroFocusX;
+
+    @Column(name = "hero_focus_y")
+    private Integer heroFocusY;
+
     /** Flag admin: se true (e con locandina) lo spettacolo compare nel Repertorio della home. */
     @Column(name = "show_in_home", nullable = false)
     private boolean showInHome = false;

@@ -44,6 +44,13 @@ public class Event {
     @Column(name = "poster_image_url", length = 512)
     private String posterImageUrl;
 
+    /** Punto focale della locandina (percentuale 0..100), null = centro. */
+    @Column(name = "hero_focus_x")
+    private Integer heroFocusX;
+
+    @Column(name = "hero_focus_y")
+    private Integer heroFocusY;
+
     @Column(name = "booking_open_at")
     private LocalDateTime bookingOpenAt;
 

@@ -20,12 +20,12 @@ public final class ShowDtos {
     public record ShowSummaryDto(
             Long id, String title, Integer productionYear, int durationMinutes,
             Integer ageRecommendation, String posterImageUrl, String director, LocalDateTime createdAt,
-            boolean showInHome) {
+            boolean showInHome, Integer heroFocusX, Integer heroFocusY) {
 
         public static ShowSummaryDto from(Show s) {
             return new ShowSummaryDto(s.getId(), s.getTitle(), s.getProductionYear(),
                     s.getDurationMinutes(), s.getAgeRecommendation(), s.getPosterImageUrl(),
-                    s.getDirector(), s.getCreatedAt(), s.isShowInHome());
+                    s.getDirector(), s.getCreatedAt(), s.isShowInHome(), s.getHeroFocusX(), s.getHeroFocusY());
         }
     }
 
@@ -35,7 +35,7 @@ public final class ShowDtos {
             String hairAndMakeup, String producer, Integer productionYear,
             String trailerUrl, String officialWebsiteUrl, String reviewsUrl, String socialMediaUrl,
             String posterImageUrl, boolean showInHome, List<ContentWarning> contentWarnings,
-            List<CastMemberDto> cast, List<ShowImageDto> images) {
+            List<CastMemberDto> cast, List<ShowImageDto> images, Integer heroFocusX, Integer heroFocusY) {
 
         public static ShowDetailDto from(Show s) {
             return new ShowDetailDto(
@@ -51,7 +51,8 @@ public final class ShowDtos {
                     s.getImages().stream()
                             .map(i -> new ShowImageDto(i.getId(), i.getImageUrl(), i.getCaption(),
                                     i.getDisplayOrder()))
-                            .toList());
+                            .toList(),
+                    s.getHeroFocusX(), s.getHeroFocusY());
         }
     }
 }
