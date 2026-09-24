@@ -250,4 +250,39 @@ class AdminApiTest {
                                 """))
                 .andExpect(status().isBadRequest());
     }
+
+    /**
+     * Round-trip del secondo punto focale della locandina per mobile
+     * (hero_focus_mobile_x/y, V007): punto desktop e punto mobile diversi fra loro
+     * (nessun vincolo incrociato), stesso CHECK di coppia del punto desktop (V005)
+     * applicato anche lato validazione service.
+     */
+    @Test
+    @Order(11)
+    void heroFocusMobileRoundTripWithDifferentDesktopPointThenRejectsInvalidPair() throws Exception {
+        String createResponse = mockMvc.perform(post("/api/admin/shows").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("""
+                                {"title": "Spettacolo con punto focale mobile", "heroFocusX": 50, "heroFocusY": 15,
+                                 "heroFocusMobileX": 80, "heroFocusMobileY": 40}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists())
+                .andReturn().getResponse().getContentAsString();
+        Long showId = ((Number) com.jayway.jsonpath.JsonPath.read(createResponse, "$.id")).longValue();
+
+        mockMvc.perform(get("/api/admin/shows/" + showId).with(asRole("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.heroFocusX").value(50))
+                .andExpect(jsonPath("$.heroFocusY").value(15))
+                .andExpect(jsonPath("$.heroFocusMobileX").value(80))
+                .andExpect(jsonPath("$.heroFocusMobileY").value(40));
+
+        mockMvc.perform(post("/api/admin/shows").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("""
+                                {"title": "Punto focale mobile incompleto", "heroFocusMobileX": 80, "heroFocusMobileY": null}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
 }
