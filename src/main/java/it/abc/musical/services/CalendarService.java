@@ -36,14 +36,16 @@ public class CalendarService {
 
     // ------------------------------------------------------------------ letture
 
-    /** Eventi del mese. Se userRoles è valorizzato filtra per target_roles (vista soci). */
+    /**
+     * Eventi che si sovrappongono al mese, anche se iniziano prima o finiscono dopo.
+     * Se userRoles è valorizzato filtra per target_roles (vista soci).
+     */
     @Transactional(readOnly = true)
     public List<CalendarEventDto> monthEvents(int year, int month, Set<String> userRoles) {
         YearMonth ym = YearMonth.of(year, month);
         LocalDateTime from = ym.atDay(1).atStartOfDay();
-        LocalDateTime to = ym.atEndOfMonth().atTime(23, 59, 59);
-        return calendarEventRepository
-                .findByDeletedAtIsNullAndStartDatetimeBetweenOrderByStartDatetimeAsc(from, to).stream()
+        LocalDateTime to = ym.plusMonths(1).atDay(1).atStartOfDay();
+        return calendarEventRepository.findActiveOverlapping(from, to).stream()
                 .filter(e -> userRoles == null
                         || it.abc.musical.util.AuthUtil.matchesTargetRoles(e.getTargetRoles(), userRoles))
                 .map(CalendarEventDto::from)
