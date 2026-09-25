@@ -7,7 +7,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -30,10 +32,15 @@ public final class CalendarDtos {
             Boolean active, Boolean isRehearsalType) {
     }
 
+    /** Esito di DELETE su un tipo: DELETED (riga rimossa, type null) o DEACTIVATED (tipo in uso). */
+    public record CalendarEventTypeDeleteResult(Long id, String outcome, String message,
+                                                CalendarEventTypeDto type) {
+    }
+
     public record SceneSummaryDto(Long id, String sceneNumber, String title, Set<String> castRoles) {
 
         public static SceneSummaryDto from(ShowScene s) {
-            return new SceneSummaryDto(s.getId(), s.getSceneNumber(), s.getTitle(), s.getCastRoles());
+            return new SceneSummaryDto(s.getId(), s.getSceneNumber(), s.getTitle(), copy(s.getCastRoles()));
         }
     }
 
@@ -57,7 +64,7 @@ public final class CalendarDtos {
                     e.getPublicEventId(), e.getTargetRoles(),
                     e.getShow() != null ? e.getShow().getId() : null,
                     e.getShow() != null ? e.getShow().getTitle() : null,
-                    e.getRehearsalRoles(),
+                    copy(e.getRehearsalRoles()),
                     e.getScenes().stream()
                             .sorted(Comparator.comparing(ShowScene::getSortOrder)
                                     .thenComparing(ShowScene::getId))
@@ -81,5 +88,13 @@ public final class CalendarDtos {
             Long showId,
             List<Long> sceneIds,
             Set<String> rehearsalRoles) {
+    }
+
+    /**
+     * Copia la collection lazy di Hibernate dentro la transazione: con open-in-view: false Jackson
+     * serializza il DTO a sessione chiusa, e una PersistentSet non inizializzata esploderebbe li'.
+     */
+    private static Set<String> copy(Set<String> lazy) {
+        return Collections.unmodifiableSet(new LinkedHashSet<>(lazy));
     }
 }

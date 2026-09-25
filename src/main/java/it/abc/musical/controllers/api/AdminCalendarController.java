@@ -1,6 +1,7 @@
 package it.abc.musical.controllers.api;
 
 import it.abc.musical.dto.CalendarDtos.CalendarEventDto;
+import it.abc.musical.dto.CalendarDtos.CalendarEventTypeDeleteResult;
 import it.abc.musical.dto.CalendarDtos.CalendarEventTypeDto;
 import it.abc.musical.dto.CalendarDtos.CalendarEventTypeUpsertRequest;
 import it.abc.musical.dto.CalendarDtos.CalendarEventUpsertRequest;
@@ -80,5 +81,10 @@ public class AdminCalendarController {
     public CalendarEventTypeDto updateType(@PathVariable Long id,
                                            @Valid @RequestBody CalendarEventTypeUpsertRequest request) {
         return calendarService.updateType(id, request);
+    }
+
+    @DeleteMapping("/calendar-event-types/{id}")
+    public CalendarEventTypeDeleteResult deleteType(@PathVariable Long id) {
+        return calendarService.deleteType(id);
     }
 }
