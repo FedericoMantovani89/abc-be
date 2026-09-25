@@ -1,6 +1,7 @@
 package it.abc.musical.services;
 
 import it.abc.musical.dto.CalendarDtos.CalendarEventDto;
+import it.abc.musical.dto.CalendarDtos.CalendarEventTypeDeleteResult;
 import it.abc.musical.dto.CalendarDtos.CalendarEventTypeDto;
 import it.abc.musical.dto.CalendarDtos.CalendarEventTypeUpsertRequest;
 import it.abc.musical.dto.CalendarDtos.CalendarEventUpsertRequest;
@@ -112,6 +113,27 @@ public class CalendarService {
         return CalendarEventTypeDto.from(calendarEventTypeRepository.save(type));
     }
 
+    /**
+     * Cancella il tipo solo se nessun evento (nemmeno soft-deleted) lo referenzia; altrimenti lo
+     * disattiva, cosi' sparisce dai tipi selezionabili ma gli eventi esistenti lo mostrano ancora.
+     */
+    @Transactional
+    public CalendarEventTypeDeleteResult deleteType(Long id) {
+        CalendarEventType type = calendarEventTypeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Tipo evento non trovato"));
+        if (calendarEventRepository.existsByEventTypeId(id)) {
+            type.setActive(false);
+            type = calendarEventTypeRepository.save(type);
+            auditLogService.record("DEACTIVATE", "CalendarEventType", id);
+            return new CalendarEventTypeDeleteResult(id, "DEACTIVATED",
+                    "Tipo in uso da almeno un evento: e' stato disattivato",
+                    CalendarEventTypeDto.from(type));
+        }
+        calendarEventTypeRepository.delete(type);
+        auditLogService.record("DELETE", "CalendarEventType", id);
+        return new CalendarEventTypeDeleteResult(id, "DELETED", "Tipo eliminato", null);
+    }
+
     // ------------------------------------------------------------------ internals
 
     private CalendarEvent activeEvent(Long id) {
@@ -120,6 +142,9 @@ public class CalendarService {
     }
 
     private void applyRequest(CalendarEvent event, CalendarEventUpsertRequest request, Long userId) {
+        if (request.endDatetime() != null && request.endDatetime().isBefore(request.startDatetime())) {
+            throw new BadRequestException("La data di fine precede la data di inizio");
+        }
         event.setTitle(request.title().trim());
         event.setDescription(request.description());
         event.setEventType(request.eventTypeId() != null

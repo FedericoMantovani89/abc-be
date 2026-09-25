@@ -13,4 +13,7 @@ public interface CalendarEventRepository extends JpaRepository<CalendarEvent, Lo
             LocalDateTime from, LocalDateTime to);
 
     Optional<CalendarEvent> findByIdAndDeletedAtIsNull(Long id);
+
+    /** Conta anche gli eventi soft-deleted: la FK event_type_id li lega ancora al tipo. */
+    boolean existsByEventTypeId(Long eventTypeId);
 }
