@@ -1,5 +1,6 @@
 package it.abc.musical.services;
 
+import it.abc.musical.TestRequests;
 import it.abc.musical.dto.AdminShowDtos.CastMemberRequest;
 import it.abc.musical.dto.AdminShowDtos.ShowUpsertRequest;
 import it.abc.musical.entities.Show;
@@ -37,24 +38,15 @@ class ShowServiceCastRoleTest {
     }
 
     private static ShowUpsertRequest requestWithCast(List<CastMemberRequest> cast) {
-        return new ShowUpsertRequest(
-                "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null,
-                cast, null, null, null, null, null, null, null, null, null, null);
+        return TestRequests.show().cast(cast).build();
     }
 
     private static ShowUpsertRequest requestWithHeroFocus(Integer heroFocusX, Integer heroFocusY) {
-        return new ShowUpsertRequest(
-                "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null,
-                null, null, null, null, null, heroFocusX, heroFocusY, null, null, null, null);
+        return TestRequests.show().heroFocus(heroFocusX, heroFocusY).build();
     }
 
     private static ShowUpsertRequest requestWithHeroZoom(Integer heroZoomDesktop, Integer heroZoomMobile) {
-        return new ShowUpsertRequest(
-                "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null,
-                null, null, null, null, null, null, null, heroZoomDesktop, heroZoomMobile, null, null);
+        return TestRequests.show().heroZoom(heroZoomDesktop, heroZoomMobile).build();
     }
 
     /** Le regole vere e proprie (limiti, coppie) sono provate una volta sola in HeroCropRulesTest. */

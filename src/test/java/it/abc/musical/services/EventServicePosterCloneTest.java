@@ -1,5 +1,6 @@
 package it.abc.musical.services;
 
+import it.abc.musical.TestRequests;
 import it.abc.musical.dto.AdminEventDtos.EventUpsertRequest;
 import it.abc.musical.entities.Event;
 import it.abc.musical.enums.UploadTargetType;
@@ -64,17 +65,11 @@ class EventServicePosterCloneTest {
     }
 
     private static EventUpsertRequest requestWithBookingWindow(LocalDateTime bookingOpenAt, LocalDateTime bookingCloseAt) {
-        return new EventUpsertRequest(
-                "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
-                null, null, null, bookingOpenAt, bookingCloseAt, null, null, null, null, null, null, null, null,
-                null, null, null, null);
+        return TestRequests.event().bookingWindow(bookingOpenAt, bookingCloseAt).build();
     }
 
     private static EventUpsertRequest requestWithPosterSource(Long posterSourceEventId) {
-        return new EventUpsertRequest(
-                "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
-                null, null, null, null, null, null, null, null, null, null, posterSourceEventId, null, null,
-                null, null, null, null);
+        return TestRequests.event().posterSource(posterSourceEventId).build();
     }
 
     @Test
@@ -199,11 +194,10 @@ class EventServicePosterCloneTest {
         when(eventRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.of(original));
 
         // Finestra di prenotazione impossibile: apertura dopo la chiusura.
-        EventUpsertRequest invalidRequest = new EventUpsertRequest(
-                "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
-                null, null, null,
-                LocalDateTime.of(2027, 1, 5, 10, 0), LocalDateTime.of(2027, 1, 1, 10, 0),
-                null, null, null, null, null, 99L, null, null, null, null, null, null);
+        EventUpsertRequest invalidRequest = TestRequests.event()
+                .bookingWindow(LocalDateTime.of(2027, 1, 5, 10, 0), LocalDateTime.of(2027, 1, 1, 10, 0))
+                .posterSource(99L)
+                .build();
 
         Path postersDir = uploadDir.resolve(UploadTargetType.SHOW_POSTER.subdir());
         long filesBefore;

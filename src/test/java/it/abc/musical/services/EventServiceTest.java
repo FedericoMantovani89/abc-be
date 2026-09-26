@@ -1,5 +1,6 @@
 package it.abc.musical.services;
 
+import it.abc.musical.TestRequests;
 import it.abc.musical.dto.AdminEventDtos.EventUpsertRequest;
 import it.abc.musical.dto.EventDtos.EventDetailDto;
 import it.abc.musical.entities.Event;
@@ -43,10 +44,7 @@ class EventServiceTest {
     }
 
     private static EventUpsertRequest request(LocalDateTime open, LocalDateTime close, LocalDateTime eventDate) {
-        return new EventUpsertRequest(
-                "Saggio di fine anno", null, eventDate, "Teatro Comunale",
-                null, null, null,
-                open, close, null, null, null, null, null, null, null, null, null, null, null, null);
+        return TestRequests.event().eventDate(eventDate).bookingWindow(open, close).build();
     }
 
     @Test
@@ -110,17 +108,11 @@ class EventServiceTest {
     }
 
     private static EventUpsertRequest requestWithHeroFocus(Integer heroFocusX, Integer heroFocusY) {
-        return new EventUpsertRequest(
-                "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
-                null, null, null, null, null, null, null, null, null, null, null,
-                heroFocusX, heroFocusY, null, null, null, null);
+        return TestRequests.event().heroFocus(heroFocusX, heroFocusY).build();
     }
 
     private static EventUpsertRequest requestWithHeroZoom(Integer heroZoomDesktop, Integer heroZoomMobile) {
-        return new EventUpsertRequest(
-                "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
-                null, null, null, null, null, null, null, null, null, null, null,
-                null, null, heroZoomDesktop, heroZoomMobile, null, null);
+        return TestRequests.event().heroZoom(heroZoomDesktop, heroZoomMobile).build();
     }
 
     /** Le regole vere e proprie (limiti, coppie) sono provate una volta sola in HeroCropRulesTest. */

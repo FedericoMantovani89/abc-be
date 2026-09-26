@@ -1,5 +1,6 @@
 package it.abc.musical.services;
 
+import it.abc.musical.TestRequests;
 import it.abc.musical.dto.AdminEventDtos.EventUpsertRequest;
 import it.abc.musical.dto.AdminShowDtos.ShowUpsertRequest;
 import it.abc.musical.entities.Event;
@@ -23,7 +24,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -96,17 +96,11 @@ class FileReplacementTest {
     }
 
     private static EventUpsertRequest eventRequest() {
-        return new EventUpsertRequest(
-                "Saggio di fine anno", null, LocalDateTime.of(2027, 1, 9, 20, 0), "Teatro Comunale",
-                null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null);
+        return TestRequests.event().build();
     }
 
     private static ShowUpsertRequest showRequest(List<Long> retainImageIds, String posterPath) {
-        return new ShowUpsertRequest(
-                "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null,
-                null, null, retainImageIds, posterPath, null, null, null, null, null, null, null);
+        return TestRequests.show().retainImages(retainImageIds, posterPath).build();
     }
 
     @Test
