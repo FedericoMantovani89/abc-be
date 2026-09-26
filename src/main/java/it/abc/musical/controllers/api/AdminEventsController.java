@@ -4,7 +4,6 @@ import it.abc.musical.dto.AdminEventDtos.EventUpsertRequest;
 import it.abc.musical.dto.EventDtos.EventDetailDto;
 import it.abc.musical.dto.EventDtos.EventSummaryDto;
 import it.abc.musical.entities.Event;
-import it.abc.musical.services.AuditLogService;
 import it.abc.musical.services.EventService;
 import it.abc.musical.util.AuthUtil;
 import jakarta.validation.Valid;
@@ -32,7 +31,6 @@ import java.util.Map;
 public class AdminEventsController {
 
     private final EventService eventService;
-    private final AuditLogService auditLogService;
 
     @GetMapping
     public List<EventSummaryDto> list(@RequestParam(required = false) String status) {
@@ -55,7 +53,6 @@ public class AdminEventsController {
             @RequestPart(value = "poster", required = false) MultipartFile poster,
             Authentication authentication) {
         Event event = eventService.create(request, poster, AuthUtil.userId(authentication));
-        auditLogService.record("CREATE", "Event", event.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", event.getId()));
     }
 
@@ -66,14 +63,12 @@ public class AdminEventsController {
             @RequestPart(value = "poster", required = false) MultipartFile poster,
             Authentication authentication) {
         Event event = eventService.update(id, request, poster, AuthUtil.userId(authentication));
-        auditLogService.record("UPDATE", "Event", event.getId());
         return Map.of("id", event.getId());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         eventService.softDelete(id);
-        auditLogService.record("DELETE", "Event", id);
         return ResponseEntity.noContent().build();
     }
 }

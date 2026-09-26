@@ -4,12 +4,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -20,7 +17,7 @@ import java.util.Set;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Show {
+public class Show extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -108,21 +105,4 @@ public class Show {
     @OneToMany(mappedBy = "show", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("displayOrder ASC, id ASC")
     private Set<ShowImage> images = new LinkedHashSet<>();
-
-    @Column(name = "created_by")
-    private Long createdBy;
-
-    @Column(name = "updated_by")
-    private Long updatedBy;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
 }

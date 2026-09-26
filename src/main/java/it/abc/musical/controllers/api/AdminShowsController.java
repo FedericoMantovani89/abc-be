@@ -6,7 +6,6 @@ import it.abc.musical.dto.AdminShowDtos.ShowUpsertRequest;
 import it.abc.musical.dto.ShowDtos.ShowDetailDto;
 import it.abc.musical.entities.Show;
 import it.abc.musical.entities.ShowImage;
-import it.abc.musical.services.AuditLogService;
 import it.abc.musical.services.ShowService;
 import it.abc.musical.util.AuthUtil;
 import jakarta.validation.Valid;
@@ -36,7 +35,6 @@ import java.util.Map;
 public class AdminShowsController {
 
     private final ShowService showService;
-    private final AuditLogService auditLogService;
 
     @GetMapping
     public Page<AdminShowListDto> list(@RequestParam(defaultValue = "0") int page,
@@ -55,7 +53,6 @@ public class AdminShowsController {
             @Valid @RequestBody ShowUpsertRequest request,
             Authentication authentication) {
         Show show = showService.create(request, AuthUtil.userId(authentication));
-        auditLogService.record("CREATE", "Show", show.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", show.getId()));
     }
 
@@ -65,14 +62,12 @@ public class AdminShowsController {
             @Valid @RequestBody ShowUpsertRequest request,
             Authentication authentication) {
         Show show = showService.update(id, request, AuthUtil.userId(authentication));
-        auditLogService.record("UPDATE", "Show", show.getId());
         return Map.of("id", show.getId());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         showService.softDelete(id);
-        auditLogService.record("DELETE", "Show", id);
         return ResponseEntity.noContent().build();
     }
 
