@@ -7,13 +7,12 @@ import it.abc.musical.dto.CalendarDtos.CalendarEventTypeUpsertRequest;
 import it.abc.musical.dto.CalendarDtos.CalendarEventUpsertRequest;
 import it.abc.musical.entities.CalendarEvent;
 import it.abc.musical.entities.CalendarEventType;
-import it.abc.musical.entities.ShowScene;
+import it.abc.musical.entities.Show;
 import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.CalendarEventRepository;
 import it.abc.musical.repositories.CalendarEventTypeRepository;
 import it.abc.musical.repositories.ShowRepository;
-import it.abc.musical.repositories.ShowSceneRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +21,11 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +34,7 @@ public class CalendarService {
     private final CalendarEventRepository calendarEventRepository;
     private final CalendarEventTypeRepository calendarEventTypeRepository;
     private final ShowRepository showRepository;
-    private final ShowSceneRepository showSceneRepository;
+    private final ShowService showService;
     private final AuditLogService auditLogService;
 
     // ------------------------------------------------------------------ letture
@@ -147,12 +150,24 @@ public class CalendarService {
         if (request.endDatetime() != null && request.endDatetime().isBefore(request.startDatetime())) {
             throw new BadRequestException("La data di fine precede la data di inizio");
         }
-        event.setTitle(request.title().trim());
-        event.setDescription(request.description());
-        event.setEventType(request.eventTypeId() != null
+        CalendarEventType type = request.eventTypeId() != null
                 ? calendarEventTypeRepository.findById(request.eventTypeId())
                         .orElseThrow(() -> new NotFoundException("Tipo evento non trovato"))
-                : null);
+                : null;
+        // Validazione prima di toccare l'entita': un 400 non lascia modifiche a meta'.
+        Show show = null;
+        Set<String> rehearsalRoles = new LinkedHashSet<>();
+        if (type != null && type.isRehearsalType()) {
+            show = request.showId() != null
+                    ? showRepository.findByIdAndDeletedAtIsNull(request.showId())
+                            .orElseThrow(() -> new NotFoundException("Spettacolo non trovato"))
+                    : null;
+            rehearsalRoles = validRehearsalRoles(show, request.rehearsalRoles());
+        }
+
+        event.setTitle(request.title().trim());
+        event.setDescription(request.description());
+        event.setEventType(type);
         event.setStartDatetime(request.startDatetime());
         event.setEndDatetime(request.endDatetime());
         event.setLocation(request.location());
@@ -161,28 +176,35 @@ public class CalendarService {
         event.setRecurrencePattern(request.recurrencePattern());
         event.setPublicEventId(request.publicEventId());
         event.setTargetRoles(request.targetRoles());
-        event.setShow(request.showId() != null
-                ? showRepository.findByIdAndDeletedAtIsNull(request.showId())
-                        .orElseThrow(() -> new NotFoundException("Spettacolo non trovato"))
-                : null);
+        // Spettacolo e ruoli convocati valgono solo per i tipi prova: sugli altri restano vuoti.
+        event.setShow(show);
+        event.setRehearsalRoles(rehearsalRoles);
         event.setUpdatedBy(userId);
+    }
 
-        // rehearsalRoles è la fonte di verità per i convocati; le scene sono il dato di pianificazione.
-        event.setRehearsalRoles(request.rehearsalRoles() != null
-                ? new LinkedHashSet<>(request.rehearsalRoles()) : new LinkedHashSet<>());
-
-        Set<ShowScene> scenes = new LinkedHashSet<>();
-        if (request.sceneIds() != null && !request.sceneIds().isEmpty()) {
-            if (request.showId() == null) {
-                throw new BadRequestException("Le scene richiedono uno spettacolo");
-            }
-            for (Long sceneId : request.sceneIds()) {
-                scenes.add(showSceneRepository.findByIdAndShowId(sceneId, request.showId())
-                        .orElseThrow(() -> new NotFoundException(
-                                "Scena " + sceneId + " non trovata per lo spettacolo")));
-            }
+    /**
+     * I ruoli convocati devono esistere nel cast dello spettacolo (stessa fonte di
+     * GET /api/admin/shows/{id}/cast-roles). Il confronto ignora maiuscole/minuscole e salva la
+     * grafia del cast.
+     */
+    private Set<String> validRehearsalRoles(Show show, Set<String> requested) {
+        Set<String> roles = new LinkedHashSet<>();
+        if (requested == null || requested.isEmpty()) {
+            return roles;
         }
-        event.setScenes(scenes);
+        if (show == null) {
+            throw new BadRequestException("I ruoli della prova richiedono uno spettacolo");
+        }
+        Map<String, String> castByLowerCase = showService.castRoles(show.getId()).stream()
+                .collect(Collectors.toMap(r -> r.toLowerCase(Locale.ITALIAN), Function.identity(), (a, b) -> a));
+        for (String role : requested) {
+            String canonical = role != null ? castByLowerCase.get(role.trim().toLowerCase(Locale.ITALIAN)) : null;
+            if (canonical == null) {
+                throw new BadRequestException("Il ruolo \"" + role + "\" non esiste nel cast dello spettacolo");
+            }
+            roles.add(canonical);
+        }
+        return roles;
     }
 
     private void applyTypeRequest(CalendarEventType type, CalendarEventTypeUpsertRequest request) {
