@@ -25,15 +25,13 @@ public class Document {
     @Column(nullable = false, unique = true)
     private UUID uuid;
 
+    /** Null = documento in radice. I permessi sono solo quelli delle cartelle (vedi MediaService). */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "folder_id")
     private Folder folder;
 
     @Column(nullable = false)
     private String title;
-
-    @Column(columnDefinition = "text")
-    private String description;
 
     @Column(name = "file_name", nullable = false)
     private String fileName;
@@ -47,14 +45,6 @@ public class Document {
     @Column(name = "mime_type", length = 100)
     private String mimeType;
 
-    /** SCRIPT | SHEET_MUSIC | TEACHING_MATERIAL | OTHER */
-    @Column(name = "document_category", length = 50)
-    private String documentCategory;
-
-    /** MEMBERS | STAFF_ONLY | ADMIN_ONLY */
-    @Column(length = 20)
-    private String visibility = "MEMBERS";
-
     @Enumerated(EnumType.STRING)
     @Column(name = "media_type", nullable = false, length = 20)
     private MediaFileType mediaType = MediaFileType.DOCUMENT;
@@ -64,9 +54,6 @@ public class Document {
 
     @Column(name = "created_by")
     private Long createdBy;
-
-    @Column(name = "updated_by")
-    private Long updatedBy;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -3,6 +3,7 @@ package it.abc.musical.dto;
 import it.abc.musical.entities.Document;
 import it.abc.musical.entities.Folder;
 import it.abc.musical.enums.MediaFileType;
+import it.abc.musical.util.RoleCsv;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -17,17 +18,15 @@ public final class MediaDtos {
     }
 
     public record DocumentDto(
-            Long id, UUID uuid, Long folderId, String title, String description,
-            String fileName, Long fileSizeBytes, String mimeType,
-            String documentCategory, String visibility, MediaFileType mediaType,
+            Long id, UUID uuid, Long folderId, String title,
+            String fileName, Long fileSizeBytes, String mimeType, MediaFileType mediaType,
             Integer downloadCount) {
 
         public static DocumentDto from(Document d) {
             return new DocumentDto(d.getId(), d.getUuid(),
                     d.getFolder() != null ? d.getFolder().getId() : null,
-                    d.getTitle(), d.getDescription(), d.getFileName(), d.getFileSizeBytes(),
-                    d.getMimeType(), d.getDocumentCategory(), d.getVisibility(),
-                    d.getMediaType(), d.getDownloadCount());
+                    d.getTitle(), d.getFileName(), d.getFileSizeBytes(),
+                    d.getMimeType(), d.getMediaType(), d.getDownloadCount());
         }
     }
 
@@ -41,12 +40,10 @@ public final class MediaDtos {
             String mimeType,
             Long fileSizeBytes,
             Long folderId,
-            @Size(max = 255) String title,
-            String documentCategory,
-            String visibility) {
+            @Size(max = 255) String title) {
     }
 
-    /** Nodo dell'albero cartelle: figli e documenti diretti. */
+    /** Nodo dell'albero cartelle: figli e documenti diretti. allowedRoles come testo "A,B" (null = tutti). */
     public record FolderNodeDto(
             Long id, String name, Long parentFolderId, String allowedRoles,
             List<FolderNodeDto> children, List<DocumentDto> documents) {
@@ -54,7 +51,7 @@ public final class MediaDtos {
         public static FolderNodeDto of(Folder f) {
             return new FolderNodeDto(f.getId(), f.getName(),
                     f.getParentFolder() != null ? f.getParentFolder().getId() : null,
-                    f.getAllowedRoles(), new ArrayList<>(), new ArrayList<>());
+                    RoleCsv.format(f.getAllowedRoles()), new ArrayList<>(), new ArrayList<>());
         }
     }
 

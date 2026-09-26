@@ -7,11 +7,14 @@ import it.abc.musical.dto.MediaDtos.MediaTreeDto;
 import it.abc.musical.entities.Document;
 import it.abc.musical.entities.Folder;
 import it.abc.musical.enums.UploadTargetType;
+import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.DocumentRepository;
 import it.abc.musical.repositories.FolderRepository;
+import it.abc.musical.repositories.RoleRepository;
 import it.abc.musical.util.AuthUtil;
 import it.abc.musical.util.FileTypeUtil;
+import it.abc.musical.util.RoleCsv;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +23,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,11 +34,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MediaService {
 
-    private static final Set<String> STAFF_ROLES = Set.of("STAFF", "ADMIN", "GOD");
-    private static final Set<String> ADMIN_ROLES = Set.of("ADMIN", "GOD");
-
     private final FolderRepository folderRepository;
     private final DocumentRepository documentRepository;
+    private final RoleRepository roleRepository;
     private final AuditLogService auditLogService;
     private final StorageService storageService;
     private final FileValidationService fileValidationService;
@@ -47,7 +49,7 @@ public class MediaService {
         return buildTree(null);
     }
 
-    /** Albero filtrato per i soci: cartelle per allowed_roles, documenti per visibility. */
+    /** Albero filtrato per i soci: solo cio' che passa canAccess. */
     @Transactional(readOnly = true)
     public MediaTreeDto memberTree(Set<String> userRoles) {
         return buildTree(userRoles);
@@ -59,65 +61,67 @@ public class MediaService {
 
         Map<Long, FolderNodeDto> nodes = new HashMap<>();
         for (Folder folder : folders) {
-            if (userRoles == null || AuthUtil.matchesTargetRoles(folder.getAllowedRoles(), userRoles)) {
+            if (canAccess(folder, userRoles)) {
                 nodes.put(folder.getId(), FolderNodeDto.of(folder));
             }
         }
 
-        MediaTreeDto tree = new MediaTreeDto(new java.util.ArrayList<>(), new java.util.ArrayList<>());
+        MediaTreeDto tree = new MediaTreeDto(new ArrayList<>(), new ArrayList<>());
         for (Folder folder : folders) {
             FolderNodeDto node = nodes.get(folder.getId());
             if (node == null) {
                 continue;
             }
-            Long parentId = folder.getParentFolder() != null ? folder.getParentFolder().getId() : null;
-            FolderNodeDto parent = parentId != null ? nodes.get(parentId) : null;
-            if (parent != null) {
-                parent.children().add(node);
+            if (folder.getParentFolder() == null) {
+                tree.folders().add(node);
             } else {
-                // Cartella root, oppure figlia di una cartella non visibile: non mostrarla in quel caso.
-                if (parentId == null) {
-                    tree.folders().add(node);
-                }
+                // canAccess(folder) implica canAccess(padre): il padre e' sempre tra i nodi.
+                nodes.get(folder.getParentFolder().getId()).children().add(node);
             }
         }
 
         for (Document document : documents) {
-            if (userRoles != null && !visibleTo(document, userRoles)) {
+            if (!canAccess(document, userRoles)) {
                 continue;
             }
-            Long folderId = document.getFolder() != null ? document.getFolder().getId() : null;
-            FolderNodeDto node = folderId != null ? nodes.get(folderId) : null;
-            if (node != null) {
-                node.documents().add(DocumentDto.from(document));
-            } else if (folderId == null) {
+            if (document.getFolder() == null) {
                 tree.rootDocuments().add(DocumentDto.from(document));
+            } else {
+                nodes.get(document.getFolder().getId()).documents().add(DocumentDto.from(document));
             }
         }
         return tree;
     }
 
-    private boolean visibleTo(Document document, Set<String> userRoles) {
-        String visibility = document.getVisibility() != null ? document.getVisibility() : "MEMBERS";
-        return switch (visibility) {
-            case "ADMIN_ONLY" -> userRoles.stream().anyMatch(ADMIN_ROLES::contains);
-            case "STAFF_ONLY" -> userRoles.stream().anyMatch(STAFF_ROLES::contains);
-            default -> true;
-        };
+    /**
+     * Unica regola di accesso dell'archivio, usata dall'albero e dal download: la cartella e
+     * TUTTE le cartelle sopra di lei devono essere attive e ammettere uno dei ruoli dell'utente
+     * (nessun ruolo = tutti i soci). userRoles null = vista admin, conta solo che siano attive.
+     */
+    private boolean canAccess(Folder folder, Set<String> userRoles) {
+        for (Folder current = folder; current != null; current = current.getParentFolder()) {
+            if (current.getDeletedAt() != null) {
+                return false;
+            }
+            if (userRoles != null && !AuthUtil.matchesRoles(current.getAllowedRoles(), userRoles)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Un documento in radice e' visibile a tutti i soci; altrimenti vale la regola della sua cartella. */
+    private boolean canAccess(Document document, Set<String> userRoles) {
+        return document.getFolder() == null || canAccess(document.getFolder(), userRoles);
     }
 
     // ------------------------------------------------------------------ documenti
 
     @Transactional(readOnly = true)
     public Document byUuidForRoles(UUID uuid, Set<String> userRoles) {
-        Document document = documentRepository.findByUuidAndDeletedAtIsNull(uuid)
+        return documentRepository.findByUuidAndDeletedAtIsNull(uuid)
+                .filter(d -> canAccess(d, userRoles))
                 .orElseThrow(() -> new NotFoundException("File non trovato"));
-        if (!visibleTo(document, userRoles)
-                || (document.getFolder() != null
-                    && !AuthUtil.matchesTargetRoles(document.getFolder().getAllowedRoles(), userRoles))) {
-            throw new NotFoundException("File non trovato");
-        }
-        return document;
     }
 
     /**
@@ -154,8 +158,6 @@ public class MediaService {
         document.setFilePath(request.filePath());
         document.setFileSizeBytes(fileSizeBytes);
         document.setMimeType(mimeType);
-        document.setDocumentCategory(request.documentCategory());
-        document.setVisibility(request.visibility() != null ? request.visibility() : "MEMBERS");
         document.setMediaType(FileTypeUtil.mediaTypeOf(extension));
         document.setCreatedBy(userId);
         document = documentRepository.save(document);
@@ -207,18 +209,20 @@ public class MediaService {
 
     @Transactional(readOnly = true)
     public List<String> folderPermissions(Long id) {
-        Folder folder = activeFolder(id);
-        if (folder.getAllowedRoles() == null || folder.getAllowedRoles().isBlank()) {
-            return List.of();
-        }
-        return List.of(folder.getAllowedRoles().split(",")).stream().map(String::trim).toList();
+        return activeFolder(id).getAllowedRoles().stream().sorted().toList();
     }
 
     @Transactional
     public void setFolderPermissions(Long id, List<String> allowedRoles) {
         Folder folder = activeFolder(id);
-        folder.setAllowedRoles(allowedRoles == null || allowedRoles.isEmpty()
-                ? null : String.join(",", allowedRoles));
+        List<String> cleaned = RoleCsv.parse(RoleCsv.format(allowedRoles));
+        for (String role : cleaned) {
+            if (roleRepository.findByName(role).isEmpty()) {
+                throw new BadRequestException("Ruolo non valido: " + role);
+            }
+        }
+        folder.getAllowedRoles().clear();
+        folder.getAllowedRoles().addAll(cleaned);
         folderRepository.save(folder);
         auditLogService.record("PERMISSIONS", "Folder", id);
     }

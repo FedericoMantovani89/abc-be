@@ -8,6 +8,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "folders")
@@ -27,9 +29,14 @@ public class Folder {
     @JoinColumn(name = "parent_folder_id")
     private Folder parentFolder;
 
-    /** Comma-separated; null = accessibile a tutti i soci. */
-    @Column(name = "allowed_roles", columnDefinition = "text")
-    private String allowedRoles;
+    /**
+     * Ruoli ammessi (tabella folder_roles); vuoto = tutti i soci. Valgono anche per tutto cio'
+     * che sta sotto la cartella: la regola e' in MediaService.canAccess.
+     */
+    @ElementCollection
+    @CollectionTable(name = "folder_roles", joinColumns = @JoinColumn(name = "folder_id"))
+    @Column(name = "role_name", length = 50, nullable = false)
+    private Set<String> allowedRoles = new LinkedHashSet<>();
 
     @Column(name = "created_by")
     private Long createdBy;

@@ -152,7 +152,7 @@ class AdminApiTest {
                         .content("""
                                 {"filePath": "/media/550e8400-e29b-41d4-a716-446655440002.pdf", "originalFilename": "regolamento.pdf",
                                  "mimeType": "application/octet-stream", "fileSizeBytes": 1,
-                                 "documentCategory": "OTHER", "visibility": "MEMBERS"}
+                                 "folderId": null}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.fileName").value("regolamento.pdf"))
