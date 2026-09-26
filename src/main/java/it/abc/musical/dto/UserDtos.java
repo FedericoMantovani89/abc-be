@@ -3,6 +3,7 @@ package it.abc.musical.dto;
 import it.abc.musical.entities.User;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
@@ -26,6 +27,6 @@ public final class UserDtos {
     public record UserStatusRequest(@NotNull Boolean active) {
     }
 
-    public record UserRoleRequest(@NotBlank String roleName) {
+    public record UserRoleRequest(@NotBlank @Size(max = 50) String roleName) {
     }
 }

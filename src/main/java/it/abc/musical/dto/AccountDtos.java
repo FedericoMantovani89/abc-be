@@ -3,6 +3,7 @@ package it.abc.musical.dto;
 import it.abc.musical.entities.User;
 import it.abc.musical.validation.ValidPassword;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public final class AccountDtos {
 
@@ -20,7 +21,9 @@ public final class AccountDtos {
         }
     }
 
-    public record UpdateProfileRequest(@NotBlank String firstName, @NotBlank String lastName) {
+    public record UpdateProfileRequest(
+            @NotBlank @Size(max = 100) String firstName,
+            @NotBlank @Size(max = 100) String lastName) {
     }
 
     /** currentPassword è null per gli utenti OAuth che impostano una password per la prima volta. */

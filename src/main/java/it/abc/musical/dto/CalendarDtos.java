@@ -4,12 +4,14 @@ import it.abc.musical.entities.CalendarEvent;
 import it.abc.musical.entities.CalendarEventType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+/** Limiti di lunghezza: quelli delle colonne VARCHAR di calendar_event_types/calendar_events (V001). */
 public final class CalendarDtos {
 
     private CalendarDtos() {
@@ -25,7 +27,9 @@ public final class CalendarDtos {
     }
 
     public record CalendarEventTypeUpsertRequest(
-            @NotBlank String name, String iconClass, String colorHex,
+            @NotBlank @Size(max = 100) String name,
+            @Size(max = 100) String iconClass,
+            @Size(max = 7) String colorHex,
             Boolean active, Boolean isRehearsalType) {
     }
 
@@ -57,13 +61,13 @@ public final class CalendarDtos {
     }
 
     public record CalendarEventUpsertRequest(
-            @NotBlank String title,
+            @NotBlank @Size(max = 255) String title,
             String description,
             Long eventTypeId,
             @NotNull LocalDateTime startDatetime,
             LocalDateTime endDatetime,
-            String location,
-            String venue,
+            @Size(max = 255) String location,
+            @Size(max = 255) String venue,
             String targetRoles,
             Long showId,
             Set<String> rehearsalRoles) {

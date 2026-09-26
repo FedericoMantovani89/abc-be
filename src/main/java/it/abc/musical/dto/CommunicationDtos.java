@@ -3,9 +3,11 @@ package it.abc.musical.dto;
 import it.abc.musical.entities.Communication;
 import it.abc.musical.entities.CommunicationType;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
+/** Limiti di lunghezza: quelli delle colonne VARCHAR di communications (V001). */
 public final class CommunicationDtos {
 
     private CommunicationDtos() {
@@ -36,10 +38,10 @@ public final class CommunicationDtos {
     }
 
     public record CommunicationUpsertRequest(
-            @NotBlank String title,
+            @NotBlank @Size(max = 255) String title,
             @NotBlank String content,
             Long communicationTypeId,
-            String priority,
+            @Size(max = 20) String priority,
             Boolean pinned,
             LocalDateTime publishedAt,
             LocalDateTime expiresAt,

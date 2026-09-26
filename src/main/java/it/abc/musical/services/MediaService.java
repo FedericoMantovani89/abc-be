@@ -7,7 +7,6 @@ import it.abc.musical.dto.MediaDtos.MediaTreeDto;
 import it.abc.musical.entities.Document;
 import it.abc.musical.entities.Folder;
 import it.abc.musical.enums.UploadTargetType;
-import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.DocumentRepository;
 import it.abc.musical.repositories.FolderRepository;
@@ -216,11 +215,7 @@ public class MediaService {
     public void setFolderPermissions(Long id, List<String> allowedRoles) {
         Folder folder = activeFolder(id);
         List<String> cleaned = RoleCsv.parse(RoleCsv.format(allowedRoles));
-        for (String role : cleaned) {
-            if (roleRepository.findByName(role).isEmpty()) {
-                throw new BadRequestException("Ruolo non valido: " + role);
-            }
-        }
+        RoleCsv.requireKnownRoles(cleaned, role -> roleRepository.findByName(role).isPresent());
         folder.getAllowedRoles().clear();
         folder.getAllowedRoles().addAll(cleaned);
         folderRepository.save(folder);

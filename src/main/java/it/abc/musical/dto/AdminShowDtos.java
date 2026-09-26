@@ -3,39 +3,44 @@ package it.abc.musical.dto;
 import it.abc.musical.entities.ContentWarning;
 import it.abc.musical.entities.Show;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+/** Limiti di lunghezza: quelli delle colonne VARCHAR di shows/show_cast/show_images (V001). */
 public final class AdminShowDtos {
 
     private AdminShowDtos() {
     }
 
-    public record CastMemberRequest(String firstName, String lastName,
-                                    @NotBlank String roleName, Integer sortOrder) {
+    public record CastMemberRequest(
+            @Size(max = 255) String firstName,
+            @Size(max = 255) String lastName,
+            @NotBlank @Size(max = 255) String roleName,
+            Integer sortOrder) {
     }
 
     public record ShowUpsertRequest(
-            @NotBlank String title,
+            @NotBlank @Size(max = 255) String title,
             String plot,
             Integer durationMinutes,
             Integer ageRecommendation,
-            String director,
-            String setDesigner,
-            String costumeDesigner,
-            String choreographer,
-            String hairAndMakeup,
-            String producer,
+            @Size(max = 255) String director,
+            @Size(max = 255) String setDesigner,
+            @Size(max = 255) String costumeDesigner,
+            @Size(max = 255) String choreographer,
+            @Size(max = 255) String hairAndMakeup,
+            @Size(max = 255) String producer,
             Integer productionYear,
-            String trailerUrl,
-            String officialWebsiteUrl,
-            String reviewsUrl,
-            String socialMediaUrl,
+            @Size(max = 512) String trailerUrl,
+            @Size(max = 512) String officialWebsiteUrl,
+            @Size(max = 512) String reviewsUrl,
+            @Size(max = 512) String socialMediaUrl,
             List<CastMemberRequest> cast,
             List<ContentWarning> contentWarnings,
             List<Long> retainImageIds,
-            String posterPath,
+            @Size(max = 512) String posterPath,
             Boolean showInHome,
             Integer heroFocusX,
             Integer heroFocusY,
@@ -45,7 +50,9 @@ public final class AdminShowDtos {
             Integer heroFocusMobileY) {
     }
 
-    public record GalleryImageAttachRequest(@NotBlank String imagePath, String caption) {
+    public record GalleryImageAttachRequest(
+            @NotBlank @Size(max = 512) String imagePath,
+            @Size(max = 255) String caption) {
     }
 
     public record AdminShowListDto(

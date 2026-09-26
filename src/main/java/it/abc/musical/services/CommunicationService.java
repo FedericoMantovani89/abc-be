@@ -7,6 +7,7 @@ import it.abc.musical.entities.Communication;
 import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.CommunicationRepository;
 import it.abc.musical.repositories.CommunicationTypeRepository;
+import it.abc.musical.repositories.RoleRepository;
 import it.abc.musical.util.AuthUtil;
 import it.abc.musical.util.RoleCsv;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class CommunicationService {
     private final CommunicationRepository communicationRepository;
     private final CommunicationTypeRepository communicationTypeRepository;
     private final AuditLogService auditLogService;
+    private final RoleRepository roleRepository;
 
     /** Vista soci: solo pubblicate, non scadute, visibili per ruolo. */
     @Transactional(readOnly = true)
@@ -97,7 +99,9 @@ public class CommunicationService {
         communication.setPinned(Boolean.TRUE.equals(request.pinned()));
         communication.setPublishedAt(request.publishedAt());
         communication.setExpiresAt(request.expiresAt());
-        communication.setTargetRoles(RoleCsv.normalize(request.targetRoles()));
+        List<String> targetRoles = RoleCsv.parse(request.targetRoles());
+        RoleCsv.requireKnownRoles(targetRoles, role -> roleRepository.findByName(role).isPresent());
+        communication.setTargetRoles(RoleCsv.format(targetRoles));
         communication.setUpdatedBy(userId);
     }
 }

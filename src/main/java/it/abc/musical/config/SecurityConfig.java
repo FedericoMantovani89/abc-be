@@ -1,5 +1,6 @@
 package it.abc.musical.config;
 
+import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.security.CustomAuthenticationFailureHandler;
 import it.abc.musical.security.CustomAuthenticationSuccessHandler;
 import it.abc.musical.security.CustomOAuth2UserService;
@@ -30,6 +31,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -60,7 +62,8 @@ public class SecurityConfig {
             .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/login/oauth2/code/*", "/oauth2/authorization/*").permitAll()
-                .requestMatchers("/posters/**", "/show_gallery/**", "/error").permitAll()
+                .requestMatchers(publicUploadPatterns()).permitAll()
+                .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/auth/token").authenticated()
                 .requestMatchers("/api/auth/**").permitAll()
@@ -117,6 +120,19 @@ public class SecurityConfig {
                 )
             );
         return http.build();
+    }
+
+    /**
+     * Cartelle di upload servite come risorse statiche pubbliche (stessa fonte di WebMvcConfig,
+     * {@code UploadTargetType.publiclyServed()}): scritte una volta sola invece che a mano qui e
+     * la' quando ne arriva una nuova. {@code media/} (l'archivio documenti) non e' pubblica: non
+     * compare, resta raggiungibile solo da MemberFileController che controlla i permessi.
+     */
+    private static String[] publicUploadPatterns() {
+        return Arrays.stream(UploadTargetType.values())
+                .filter(UploadTargetType::publiclyServed)
+                .map(target -> "/" + target.subdir() + "/**")
+                .toArray(String[]::new);
     }
 
     @Bean

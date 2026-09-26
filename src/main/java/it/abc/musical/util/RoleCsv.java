@@ -1,10 +1,13 @@
 package it.abc.musical.util;
 
+import it.abc.musical.exceptions.BadRequestException;
+
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
@@ -38,6 +41,20 @@ public final class RoleCsv {
     /** Ripulisce un testo arrivato dal client prima di salvarlo. */
     public static String normalize(String csv) {
         return format(parse(csv));
+    }
+
+    /**
+     * Ferma la richiesta con un 400 al primo ruolo che non esiste nella tabella {@code roles},
+     * stesso messaggio ovunque un elenco di ruoli venga scritto (cartelle, calendario,
+     * comunicazioni): senza questo controllo un nome fuori formato arriva al CHECK del database
+     * e diventa un 500.
+     */
+    public static void requireKnownRoles(Collection<String> roles, Predicate<String> exists) {
+        for (String role : roles) {
+            if (!exists.test(role)) {
+                throw new BadRequestException("Ruolo non valido: " + role);
+            }
+        }
     }
 
     private static List<String> clean(Stream<String> roles) {
