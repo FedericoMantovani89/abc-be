@@ -5,6 +5,7 @@ import it.abc.musical.entities.Folder;
 import it.abc.musical.enums.MediaFileType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,13 +31,17 @@ public final class MediaDtos {
         }
     }
 
+    /**
+     * Aggancio di un file caricato a pezzi. mimeType e fileSizeBytes sono facoltativi e ignorati:
+     * il server li ricava dal file su disco (restano per non rompere chi li manda).
+     */
     public record DocumentAttachRequest(
             @NotBlank String filePath,
-            @NotBlank String originalFilename,
-            @NotBlank String mimeType,
-            @NotNull Long fileSizeBytes,
+            @NotBlank @Size(max = 255) String originalFilename,
+            String mimeType,
+            Long fileSizeBytes,
             Long folderId,
-            String title,
+            @Size(max = 255) String title,
             String documentCategory,
             String visibility) {
     }
@@ -57,7 +62,7 @@ public final class MediaDtos {
     public record MediaTreeDto(List<FolderNodeDto> folders, List<DocumentDto> rootDocuments) {
     }
 
-    public record FolderCreateRequest(@NotBlank String name, Long parentFolderId) {
+    public record FolderCreateRequest(@NotBlank @Size(max = 255) String name, Long parentFolderId) {
     }
 
     public record FolderPermissionsDto(List<String> allowedRoles) {

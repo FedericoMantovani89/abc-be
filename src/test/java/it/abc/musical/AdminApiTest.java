@@ -145,10 +145,8 @@ class AdminApiTest {
         Files.createDirectories(mediaFile.getParent());
         Files.write(mediaFile, "%PDF-1.4\n%%EOF".getBytes());
 
-        // mimeType/fileSizeBytes restano nel body solo perché DocumentAttachRequest li
-        // dichiara @NotBlank/@NotNull (DTO invariato, fuori scope per questo fix) — il
-        // valore inviato è ignorato: il server li ri-deriva dal file su disco (vedi
-        // asserzione su $.mimeType sotto, che verifica proprio questa provenienza).
+        // mimeType/fileSizeBytes sono facoltativi e ignorati: il server li ri-deriva dal
+        // file su disco (vedi asserzione su $.mimeType sotto, che verifica proprio questa provenienza).
         mockMvc.perform(post("/api/admin/media").with(asRole("ADMIN"))
                         .contentType("application/json")
                         .content("""
@@ -156,7 +154,7 @@ class AdminApiTest {
                                  "mimeType": "application/octet-stream", "fileSizeBytes": 1,
                                  "documentCategory": "OTHER", "visibility": "MEMBERS"}
                                 """))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.fileName").value("regolamento.pdf"))
                 .andExpect(jsonPath("$.mimeType").value("application/pdf"));
     }

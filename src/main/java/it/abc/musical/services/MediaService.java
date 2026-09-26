@@ -6,6 +6,7 @@ import it.abc.musical.dto.MediaDtos.FolderNodeDto;
 import it.abc.musical.dto.MediaDtos.MediaTreeDto;
 import it.abc.musical.entities.Document;
 import it.abc.musical.entities.Folder;
+import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.DocumentRepository;
 import it.abc.musical.repositories.FolderRepository;
@@ -119,17 +120,22 @@ public class MediaService {
         return document;
     }
 
+    /**
+     * Un accesso al file del socio: contatore dei download e riga nel registro attivita'.
+     * Chi chiama decide cosa e' un accesso nuovo (la prima richiesta, non i Range successivi).
+     */
     @Transactional
-    public void incrementDownloadCount(Long documentId) {
+    public void recordDownload(Long documentId) {
         documentRepository.findById(documentId).ifPresent(d -> {
             d.setDownloadCount((d.getDownloadCount() != null ? d.getDownloadCount() : 0) + 1);
             documentRepository.save(d);
         });
+        auditLogService.record("DOWNLOAD", "Document", documentId);
     }
 
     @Transactional
     public DocumentDto attachDocument(DocumentAttachRequest request, Long userId) {
-        storageService.validateManagedPath(request.filePath(), StorageService.MEDIA_DIR);
+        storageService.validateManagedPath(request.filePath(), UploadTargetType.MEDIA_DOCUMENT);
         Path resolved = storageService.resolve(request.filePath());
         long fileSizeBytes;
         try {

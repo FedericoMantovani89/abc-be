@@ -7,6 +7,7 @@ import it.abc.musical.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.support.ResourceRegion;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRange;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -49,13 +51,16 @@ public class MemberFileController {
                 : MediaType.APPLICATION_OCTET_STREAM;
 
         if (rangeHeader == null) {
-            mediaService.incrementDownloadCount(document.getId());
+            mediaService.recordDownload(document.getId());
             ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
                     .contentType(mediaType)
                     .header(HttpHeaders.ACCEPT_RANGES, "bytes");
             if (download) {
-                builder.header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + document.getFileName() + "\"");
+                // Il nome viene dal client: ContentDisposition lo mette tra virgolette con escape e
+                // aggiunge filename* (RFC 5987), cosi' virgolette, accenti o a capo non rompono l'intestazione.
+                builder.header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(document.getFileName(), StandardCharsets.UTF_8)
+                        .build().toString());
             }
             return builder.body(resource);
         }
@@ -66,6 +71,11 @@ public class MemberFileController {
         long start = range.getRangeStart(contentLength);
         long end = range.getRangeEnd(contentLength);
         long rangeLength = Math.min(MAX_CHUNK, end - start + 1);
+        // Un lettore audio/video apre il file con "Range: bytes=0-" e poi chiede i pezzi successivi:
+        // conta come accesso solo la richiesta che parte dall'inizio.
+        if (start == 0) {
+            mediaService.recordDownload(document.getId());
+        }
 
         return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
                 .contentType(mediaType)

@@ -36,9 +36,10 @@ public class AdminMediaController {
     }
 
     @PostMapping
-    public DocumentDto attach(@Valid @RequestBody DocumentAttachRequest request,
-                              Authentication authentication) {
-        return mediaService.attachDocument(request, AuthUtil.userId(authentication));
+    public ResponseEntity<DocumentDto> attach(@Valid @RequestBody DocumentAttachRequest request,
+                                              Authentication authentication) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(mediaService.attachDocument(request, AuthUtil.userId(authentication)));
     }
 
     @DeleteMapping("/{id}")
@@ -70,6 +71,6 @@ public class AdminMediaController {
     public ResponseEntity<Void> setPermissions(@PathVariable Long id,
                                                @Valid @RequestBody FolderPermissionsRequest request) {
         mediaService.setFolderPermissions(id, request.allowedRoles());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 }
