@@ -182,7 +182,9 @@ public class EventService {
 
     private String storePoster(MultipartFile poster) {
         fileValidationService.validate(poster, UploadTargetType.SHOW_POSTER);
-        return storageService.store(poster, UploadTargetType.SHOW_POSTER);
+        String path = storageService.store(poster, UploadTargetType.SHOW_POSTER);
+        storageService.deleteAfterRollback(path);
+        return path;
     }
 
     /**
@@ -198,7 +200,9 @@ public class EventService {
         if (sourcePosterUrl == null || sourcePosterUrl.isBlank()) {
             return null;
         }
-        return storageService.copy(sourcePosterUrl, UploadTargetType.SHOW_POSTER);
+        String path = storageService.copy(sourcePosterUrl, UploadTargetType.SHOW_POSTER);
+        storageService.deleteAfterRollback(path);
+        return path;
     }
 
     /**

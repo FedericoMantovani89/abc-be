@@ -101,6 +101,31 @@ public class StorageService {
         });
     }
 
+    /**
+     * Cancella il file se la transazione in corso si annulla (o finisce in stato incerto);
+     * se va a buon fine il file resta, insieme alla riga che lo cita. Senza transazione non fa
+     * nulla: significa che il chiamante ha gia' finito con successo prima di arrivare qui.
+     * E' il simmetrico di deleteAfterCommit, per il file NUOVO scritto su disco prima del save()
+     * che lo referenzia (es. locandina di un evento): se il save() fallisce dopo, non deve
+     * restare un file orfano.
+     */
+    public void deleteAfterRollback(String relativePath) {
+        if (relativePath == null || relativePath.isBlank()) {
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != TransactionSynchronization.STATUS_COMMITTED) {
+                    delete(relativePath);
+                }
+            }
+        });
+    }
+
     /** Cancellazione immediata; per sostituire un file in una transazione usare deleteAfterCommit. */
     public void delete(String relativePath) {
         if (relativePath == null || relativePath.isBlank()) {

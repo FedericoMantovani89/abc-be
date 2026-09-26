@@ -15,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -124,6 +125,54 @@ class FileReplacementTest {
         rollback();
 
         assertThat(Files.exists(storageService.resolve(path))).isTrue();
+    }
+
+    @Test
+    void deleteAfterRollbackKeepsFileOnCommit() throws IOException {
+        String path = existingFile(UploadTargetType.SHOW_POSTER);
+
+        beginTransaction();
+        storageService.deleteAfterRollback(path);
+        commit();
+
+        assertThat(Files.exists(storageService.resolve(path))).isTrue();
+    }
+
+    @Test
+    void deleteAfterRollbackRemovesFileOnRollback() throws IOException {
+        String path = existingFile(UploadTargetType.SHOW_POSTER);
+
+        beginTransaction();
+        storageService.deleteAfterRollback(path);
+        assertThat(Files.exists(storageService.resolve(path))).isTrue();
+        rollback();
+
+        assertThat(Files.exists(storageService.resolve(path))).isFalse();
+    }
+
+    /**
+     * Punto 10 dell'audit: la locandina NUOVA viene scritta su disco prima del save() che la
+     * referenzia; se il save() fallisce (qui simulato con un vincolo del database) la
+     * transazione si annulla e il file non deve restare orfano.
+     */
+    @Test
+    void newEventPosterIsRemovedIfTheSaveThatShouldReferenceItFails() throws IOException {
+        when(eventRepository.save(any())).thenThrow(new DataIntegrityViolationException("vincolo violato"));
+        Path postersDir = uploadDir.resolve(UploadTargetType.SHOW_POSTER.subdir());
+        long filesBefore;
+        try (var listing = Files.list(postersDir)) {
+            filesBefore = listing.count();
+        }
+
+        beginTransaction();
+        assertThatThrownBy(() -> eventService.create(eventRequest(),
+                new MockMultipartFile("poster", "nuova.jpg", "image/jpeg", JPEG), 1L))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        rollback();
+
+        try (var listing = Files.list(postersDir)) {
+            assertThat(listing.count()).isEqualTo(filesBefore);
+        }
     }
 
     @Test
