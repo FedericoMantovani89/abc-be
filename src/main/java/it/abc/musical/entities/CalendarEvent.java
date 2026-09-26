@@ -67,13 +67,6 @@ public class CalendarEvent {
     @Column(name = "role_name", nullable = false)
     private Set<String> rehearsalRoles = new LinkedHashSet<>();
 
-    /** Scene in programma per la prova. */
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "calendar_event_scenes",
-            joinColumns = @JoinColumn(name = "event_id"),
-            inverseJoinColumns = @JoinColumn(name = "scene_id"))
-    private Set<ShowScene> scenes = new LinkedHashSet<>();
-
     @Column(name = "created_by")
     private Long createdBy;
 

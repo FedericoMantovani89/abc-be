@@ -2,15 +2,12 @@ package it.abc.musical.dto;
 
 import it.abc.musical.entities.CalendarEvent;
 import it.abc.musical.entities.CalendarEventType;
-import it.abc.musical.entities.ShowScene;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 
 public final class CalendarDtos {
@@ -37,13 +34,6 @@ public final class CalendarDtos {
                                                 CalendarEventTypeDto type) {
     }
 
-    public record SceneSummaryDto(Long id, String sceneNumber, String title, Set<String> castRoles) {
-
-        public static SceneSummaryDto from(ShowScene s) {
-            return new SceneSummaryDto(s.getId(), s.getSceneNumber(), s.getTitle(), copy(s.getCastRoles()));
-        }
-    }
-
     public record CalendarEventDto(
             Long id, String title, String description,
             CalendarEventTypeDto eventType,
@@ -52,7 +42,7 @@ public final class CalendarDtos {
             boolean isRecurring, String recurrencePattern,
             Long publicEventId, String targetRoles,
             Long showId, String showTitle,
-            Set<String> rehearsalRoles, List<SceneSummaryDto> scenes) {
+            Set<String> rehearsalRoles) {
 
         public static CalendarEventDto from(CalendarEvent e) {
             return new CalendarEventDto(
@@ -64,12 +54,7 @@ public final class CalendarDtos {
                     e.getPublicEventId(), e.getTargetRoles(),
                     e.getShow() != null ? e.getShow().getId() : null,
                     e.getShow() != null ? e.getShow().getTitle() : null,
-                    copy(e.getRehearsalRoles()),
-                    e.getScenes().stream()
-                            .sorted(Comparator.comparing(ShowScene::getSortOrder)
-                                    .thenComparing(ShowScene::getId))
-                            .map(SceneSummaryDto::from)
-                            .toList());
+                    copy(e.getRehearsalRoles()));
         }
     }
 
@@ -86,7 +71,6 @@ public final class CalendarDtos {
             Long publicEventId,
             String targetRoles,
             Long showId,
-            List<Long> sceneIds,
             Set<String> rehearsalRoles) {
     }
 

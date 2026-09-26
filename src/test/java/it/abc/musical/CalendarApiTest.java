@@ -49,7 +49,6 @@ class CalendarApiTest {
     JavaMailSender mailSender;
 
     static Long showId;
-    static Long sceneId;
     static Long eventId;
     static Long usedTypeId;
 
@@ -72,34 +71,38 @@ class CalendarApiTest {
 
     @Test
     @Order(1)
-    void createRehearsalWithRolesAndScenes() throws Exception {
+    void createRehearsalWithTwoCastRoles() throws Exception {
         showId = id(mockMvc.perform(post("/api/admin/shows").with(asRole("ADMIN"))
                         .contentType("application/json")
-                        .content("{\"title\": \"Spettacolo calendario\"}"))
+                        .content("""
+                                {"title": "Spettacolo calendario", "cast": [
+                                  {"firstName": "Anna", "lastName": "Rossi", "roleName": "Belle"},
+                                  {"firstName": "Luca", "lastName": "Bianchi", "roleName": "Bestia"},
+                                  {"firstName": "Marco", "lastName": "Verdi", "roleName": "Gaston"}]}
+                                """))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString());
-        sceneId = id(mockMvc.perform(post("/api/admin/shows/" + showId + "/scenes").with(asRole("ADMIN"))
-                        .contentType("application/json")
-                        .content("{\"sceneNumber\": \"1\", \"title\": \"Apertura\", \"sortOrder\": 1}"))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString());
-        mockMvc.perform(put("/api/admin/shows/" + showId + "/scenes/" + sceneId + "/roles").with(asRole("ADMIN"))
-                        .contentType("application/json")
-                        .content("{\"roles\": [\"Belle\"]}"))
-                .andExpect(status().isOk());
         usedTypeId = createType("Prova Test");
 
         eventId = id(mockMvc.perform(post("/api/admin/calendar-events").with(asRole("ADMIN"))
                         .contentType("application/json")
                         .content("""
-                                {"title": "Prova scena 1", "eventTypeId": %d,
+                                {"title": "Prova ruoli", "eventTypeId": %d,
                                  "startDatetime": "2026-09-10T20:00:00", "endDatetime": "2026-09-10T23:00:00",
-                                 "showId": %d, "sceneIds": [%d], "rehearsalRoles": ["Belle", "Bestia"]}
-                                """.formatted(usedTypeId, showId, sceneId)))
+                                 "showId": %d, "rehearsalRoles": ["Belle", "Bestia"]}
+                                """.formatted(usedTypeId, showId)))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.showId").value(showId))
                 .andExpect(jsonPath("$.rehearsalRoles.length()").value(2))
-                .andExpect(jsonPath("$.scenes[0].castRoles[0]").value("Belle"))
+                .andExpect(jsonPath("$.scenes").doesNotExist())
                 .andReturn().getResponse().getContentAsString());
+
+        // riletto con GET: stessi 2 ruoli, nell'ordine inviato
+        mockMvc.perform(get("/api/admin/calendar-events/" + eventId).with(asRole("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.showTitle").value("Spettacolo calendario"))
+                .andExpect(jsonPath("$.rehearsalRoles[0]").value("Belle"))
+                .andExpect(jsonPath("$.rehearsalRoles[1]").value("Bestia"));
     }
 
     @Test
@@ -110,8 +113,6 @@ class CalendarApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].rehearsalRoles.length()").value(2))
-                .andExpect(jsonPath("$[0].scenes[0].title").value("Apertura"))
-                .andExpect(jsonPath("$[0].scenes[0].castRoles[0]").value("Belle"))
                 .andExpect(jsonPath("$[0].eventType.active").value(true));
     }
 
@@ -126,7 +127,7 @@ class CalendarApiTest {
 
         mockMvc.perform(get("/api/admin/calendar-events/" + eventId).with(asRole("ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.scenes[0].castRoles[0]").value("Belle"));
+                .andExpect(jsonPath("$.rehearsalRoles.length()").value(2));
     }
 
     @Test
@@ -135,18 +136,76 @@ class CalendarApiTest {
         mockMvc.perform(put("/api/admin/calendar-events/" + eventId).with(asRole("ADMIN"))
                         .contentType("application/json")
                         .content("""
-                                {"title": "Prova scena 1 bis", "eventTypeId": %d,
+                                {"title": "Prova ruoli bis", "eventTypeId": %d,
                                  "startDatetime": "2026-09-10T20:00:00", "endDatetime": "2026-09-10T20:00:00",
-                                 "showId": %d, "sceneIds": [%d], "rehearsalRoles": ["Belle"]}
-                                """.formatted(usedTypeId, showId, sceneId)))
+                                 "showId": %d, "rehearsalRoles": ["belle"]}
+                                """.formatted(usedTypeId, showId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("Prova scena 1 bis"))
+                .andExpect(jsonPath("$.title").value("Prova ruoli bis"))
                 .andExpect(jsonPath("$.rehearsalRoles.length()").value(1))
-                .andExpect(jsonPath("$.scenes[0].castRoles[0]").value("Belle"));
+                // salvato con la grafia del cast
+                .andExpect(jsonPath("$.rehearsalRoles[0]").value("Belle"));
     }
 
     @Test
     @Order(5)
+    void roleNotInCastIsRejected() throws Exception {
+        String body = """
+                {"title": "Prova sbagliata", "eventTypeId": %d,
+                 "startDatetime": "2026-09-11T20:00:00", "endDatetime": "2026-09-11T23:00:00",
+                 "showId": %d, "rehearsalRoles": ["Belle", "Cenerentola"]}
+                """.formatted(usedTypeId, showId);
+        mockMvc.perform(post("/api/admin/calendar-events").with(asRole("ADMIN"))
+                        .contentType("application/json").content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error")
+                        .value("Il ruolo \"Cenerentola\" non esiste nel cast dello spettacolo"));
+        mockMvc.perform(put("/api/admin/calendar-events/" + eventId).with(asRole("ADMIN"))
+                        .contentType("application/json").content(body))
+                .andExpect(status().isBadRequest());
+        // l'evento esistente non e' stato toccato
+        mockMvc.perform(get("/api/admin/calendar-events/" + eventId).with(asRole("ADMIN")))
+                .andExpect(jsonPath("$.title").value("Prova ruoli bis"))
+                .andExpect(jsonPath("$.rehearsalRoles.length()").value(1));
+    }
+
+    @Test
+    @Order(6)
+    void rolesWithoutShowAreRejected() throws Exception {
+        mockMvc.perform(post("/api/admin/calendar-events").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("""
+                                {"title": "Prova senza spettacolo", "eventTypeId": %d,
+                                 "startDatetime": "2026-09-11T20:00:00", "rehearsalRoles": ["Belle"]}
+                                """.formatted(usedTypeId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("I ruoli della prova richiedono uno spettacolo"));
+    }
+
+    @Test
+    @Order(7)
+    void nonRehearsalTypeDropsShowAndRoles() throws Exception {
+        Long meetingType = id(mockMvc.perform(post("/api/admin/calendar-event-types").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("{\"name\": \"Riunione Test\", \"isRehearsalType\": false}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString());
+        Long meetingId = id(mockMvc.perform(post("/api/admin/calendar-events").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("""
+                                {"title": "Riunione", "eventTypeId": %d, "startDatetime": "2026-10-01T20:00:00",
+                                 "showId": %d, "rehearsalRoles": ["Inventato"]}
+                                """.formatted(meetingType, showId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.showId").doesNotExist())
+                .andExpect(jsonPath("$.rehearsalRoles.length()").value(0))
+                .andReturn().getResponse().getContentAsString());
+        mockMvc.perform(delete("/api/admin/calendar-events/" + meetingId).with(asRole("ADMIN")))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @Order(8)
     void endBeforeStartIsRejected() throws Exception {
         String body = """
                 {"title": "Al contrario", "startDatetime": "2026-09-12T20:00:00",
@@ -164,11 +223,11 @@ class CalendarApiTest {
         mockMvc.perform(get("/api/admin/calendar-events").param("year", "2026").param("month", "9")
                         .with(asRole("ADMIN")))
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].title").value("Prova scena 1 bis"));
+                .andExpect(jsonPath("$[0].title").value("Prova ruoli bis"));
     }
 
     @Test
-    @Order(6)
+    @Order(9)
     void deleteUsedTypeDeactivatesIt() throws Exception {
         mockMvc.perform(delete("/api/admin/calendar-event-types/" + usedTypeId).with(asRole("ADMIN")))
                 .andExpect(status().isOk())
@@ -186,7 +245,7 @@ class CalendarApiTest {
     }
 
     @Test
-    @Order(7)
+    @Order(10)
     void deleteTypeUsedOnlyBySoftDeletedEventDeactivatesIt() throws Exception {
         mockMvc.perform(delete("/api/admin/calendar-events/" + eventId).with(asRole("ADMIN")))
                 .andExpect(status().isNoContent());
@@ -196,7 +255,7 @@ class CalendarApiTest {
     }
 
     @Test
-    @Order(8)
+    @Order(11)
     void deleteUnusedTypeRemovesIt() throws Exception {
         Long unused = createType("Mai usato");
         mockMvc.perform(delete("/api/admin/calendar-event-types/" + unused).with(asRole("ADMIN")))
@@ -211,7 +270,7 @@ class CalendarApiTest {
     }
 
     @Test
-    @Order(9)
+    @Order(12)
     void memberCannotDeleteTypes() throws Exception {
         mockMvc.perform(delete("/api/admin/calendar-event-types/1").with(asRole("MEMBER")))
                 .andExpect(status().isForbidden());

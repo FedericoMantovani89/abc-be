@@ -30,7 +30,7 @@ public class CalendarEventType {
     @Column(nullable = false)
     private boolean active = true;
 
-    /** True per i tipi "Prova": il form mostra selezione spettacolo + scene + ruoli. */
+    /** True per i tipi "Prova": il form mostra selezione spettacolo + ruoli del cast. */
     @Column(name = "is_rehearsal_type", nullable = false)
     private boolean rehearsalType = false;
 }
