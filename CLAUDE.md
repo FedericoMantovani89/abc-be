@@ -106,6 +106,25 @@ NON versionata — vedi `deploy\.env.example` per l'elenco completo e i placehol
 compose in `deploy/` sia `deploy\backend.bat` leggono da li'. `SPRING_PROFILES_ACTIVE` seleziona
 `application-dev.yml` / `application-docker.yml` sopra la base `application.yml`.
 
+## Regole del database
+
+Punti chiusi come "non si fa" dopo l'audit del 26/09/2026 (decisioni di Federico): non
+riaprirli.
+
+- **Fuso orario**: le date restano `TIMESTAMP` senza fuso; JVM e database girano sempre con
+  `TZ=Europe/Rome`, anche in locale. Non passare a `TIMESTAMPTZ`.
+- **Nomi delle colonne**: quelli esistenti non si rinominano. Le colonne NUOVE usano `*_at` per
+  le date, niente prefisso `is_` per i booleani, `file_path` per i percorsi interni di file.
+- **Convocati delle prove per nome di ruolo** (`calendar_event_rehearsal_roles.role_name`): voluto,
+  convocare "Ensemble" convoca tutti i ruoli con quel nome.
+- **`audit_logs` e' storia**: `entity_id` non ha chiave esterna e le righe vecchie non si
+  correggono.
+- **Chiavi esterne senza `ON DELETE`**: restano cosi'; rifiutare la cancellazione del padre e' la
+  regola giusta con la cancellazione morbida.
+- **Ogni correzione a mano sui dati va annotata** (rinumerazioni, cancellazioni, UPDATE fatti
+  fuori dall'applicazione): meglio dentro una migrazione Flyway, altrimenti scritta nel referto
+  del lavoro.
+
 ## Repo fratello
 
 Il frontend vive in `..\abc-fe` (repo separato, remote proprio). Le istruzioni specifiche del
