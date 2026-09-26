@@ -32,7 +32,7 @@ class ShowServiceCastRoleTest {
     void setUp() {
         showRepository = mock(ShowRepository.class);
         StorageService storageService = mock(StorageService.class);
-        service = new ShowService(showRepository, storageService);
+        service = new ShowService(showRepository, storageService, mock(AuditLogService.class));
         when(showRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -50,73 +50,6 @@ class ShowServiceCastRoleTest {
                 null, null, null, null, null, heroFocusX, heroFocusY, null, null, null, null);
     }
 
-    private static ShowUpsertRequest requestWithHeroFocusMobile(Integer heroFocusMobileX, Integer heroFocusMobileY) {
-        return new ShowUpsertRequest(
-                "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, heroFocusMobileX, heroFocusMobileY);
-    }
-
-    @Test
-    void rejectsHeroFocusWithOnlyOneCoordinate() {
-        assertThatThrownBy(() -> service.create(requestWithHeroFocus(30, null), 1L))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("Punto focale non valido");
-    }
-
-    @Test
-    void rejectsHeroFocusOutOfRange() {
-        assertThatThrownBy(() -> service.create(requestWithHeroFocus(-1, 50), 1L))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("Punto focale non valido");
-    }
-
-    @Test
-    void acceptsHeroFocusWhenBothCoordinatesAreNull() {
-        Show saved = service.create(requestWithHeroFocus(null, null), 1L);
-
-        assertThat(saved.getHeroFocusX()).isNull();
-        assertThat(saved.getHeroFocusY()).isNull();
-    }
-
-    @Test
-    void acceptsHeroFocusWhenBothCoordinatesAreInRange() {
-        Show saved = service.create(requestWithHeroFocus(0, 100), 1L);
-
-        assertThat(saved.getHeroFocusX()).isEqualTo(0);
-        assertThat(saved.getHeroFocusY()).isEqualTo(100);
-    }
-
-    @Test
-    void rejectsHeroFocusMobileWithOnlyOneCoordinate() {
-        assertThatThrownBy(() -> service.create(requestWithHeroFocusMobile(30, null), 1L))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("Punto focale non valido");
-    }
-
-    @Test
-    void rejectsHeroFocusMobileOutOfRange() {
-        assertThatThrownBy(() -> service.create(requestWithHeroFocusMobile(-1, 50), 1L))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("Punto focale non valido");
-    }
-
-    @Test
-    void acceptsHeroFocusMobileWhenBothCoordinatesAreNull() {
-        Show saved = service.create(requestWithHeroFocusMobile(null, null), 1L);
-
-        assertThat(saved.getHeroFocusMobileX()).isNull();
-        assertThat(saved.getHeroFocusMobileY()).isNull();
-    }
-
-    @Test
-    void acceptsHeroFocusMobileWhenBothCoordinatesAreInRange() {
-        Show saved = service.create(requestWithHeroFocusMobile(0, 100), 1L);
-
-        assertThat(saved.getHeroFocusMobileX()).isEqualTo(0);
-        assertThat(saved.getHeroFocusMobileY()).isEqualTo(100);
-    }
-
     private static ShowUpsertRequest requestWithHeroZoom(Integer heroZoomDesktop, Integer heroZoomMobile) {
         return new ShowUpsertRequest(
                 "Il Piccolo Principe", null, null, null, null, null, null, null, null, null,
@@ -124,32 +57,26 @@ class ShowServiceCastRoleTest {
                 null, null, null, null, null, null, null, heroZoomDesktop, heroZoomMobile, null, null);
     }
 
+    /** Le regole vere e proprie (limiti, coppie) sono provate una volta sola in HeroCropRulesTest. */
     @Test
-    void rejectsHeroZoomDesktopOutOfRange() {
+    void delegatesHeroFocusValidationToHeroCropRules() {
+        assertThatThrownBy(() -> service.create(requestWithHeroFocus(-1, 50), 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Punto focale non valido");
+
+        Show saved = service.create(requestWithHeroFocus(0, 100), 1L);
+        assertThat(saved.getHeroFocusX()).isEqualTo(0);
+        assertThat(saved.getHeroFocusY()).isEqualTo(100);
+    }
+
+    /** Le regole vere e proprie (limiti, coppie) sono provate una volta sola in HeroCropRulesTest. */
+    @Test
+    void delegatesHeroZoomValidationToHeroCropRules() {
         assertThatThrownBy(() -> service.create(requestWithHeroZoom(9, null), 1L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Zoom non valido");
-    }
 
-    @Test
-    void rejectsHeroZoomMobileOutOfRange() {
-        assertThatThrownBy(() -> service.create(requestWithHeroZoom(null, 301), 1L))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("Zoom non valido");
-    }
-
-    @Test
-    void acceptsHeroZoomWhenBothAreNull() {
-        Show saved = service.create(requestWithHeroZoom(null, null), 1L);
-
-        assertThat(saved.getHeroZoomDesktop()).isNull();
-        assertThat(saved.getHeroZoomMobile()).isNull();
-    }
-
-    @Test
-    void acceptsHeroZoomWhenIndependentlyInRange() {
         Show saved = service.create(requestWithHeroZoom(10, 300), 1L);
-
         assertThat(saved.getHeroZoomDesktop()).isEqualTo(10);
         assertThat(saved.getHeroZoomMobile()).isEqualTo(300);
     }

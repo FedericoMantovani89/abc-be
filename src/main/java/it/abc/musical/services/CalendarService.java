@@ -12,6 +12,7 @@ import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.CalendarEventRepository;
 import it.abc.musical.repositories.CalendarEventTypeRepository;
+import it.abc.musical.repositories.RoleRepository;
 import it.abc.musical.repositories.ShowRepository;
 import it.abc.musical.util.AuthUtil;
 import it.abc.musical.util.RoleCsv;
@@ -38,6 +39,7 @@ public class CalendarService {
     private final ShowRepository showRepository;
     private final ShowService showService;
     private final AuditLogService auditLogService;
+    private final RoleRepository roleRepository;
 
     // ------------------------------------------------------------------ letture
 
@@ -109,15 +111,18 @@ public class CalendarService {
     public CalendarEventTypeDto createType(CalendarEventTypeUpsertRequest request) {
         CalendarEventType type = new CalendarEventType();
         applyTypeRequest(type, request);
-        return CalendarEventTypeDto.from(calendarEventTypeRepository.save(type));
+        type = calendarEventTypeRepository.save(type);
+        auditLogService.record("CREATE", "CalendarEventType", type.getId());
+        return CalendarEventTypeDto.from(type);
     }
 
     @Transactional
     public CalendarEventTypeDto updateType(Long id, CalendarEventTypeUpsertRequest request) {
-        CalendarEventType type = calendarEventTypeRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Tipo evento non trovato"));
+        CalendarEventType type = requireType(id);
         applyTypeRequest(type, request);
-        return CalendarEventTypeDto.from(calendarEventTypeRepository.save(type));
+        type = calendarEventTypeRepository.save(type);
+        auditLogService.record("UPDATE", "CalendarEventType", type.getId());
+        return CalendarEventTypeDto.from(type);
     }
 
     /**
@@ -126,8 +131,7 @@ public class CalendarService {
      */
     @Transactional
     public CalendarEventTypeDeleteResult deleteType(Long id) {
-        CalendarEventType type = calendarEventTypeRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Tipo evento non trovato"));
+        CalendarEventType type = requireType(id);
         if (calendarEventRepository.existsByEventTypeId(id)) {
             type.setActive(false);
             type = calendarEventTypeRepository.save(type);
@@ -148,14 +152,16 @@ public class CalendarService {
                 .orElseThrow(() -> new NotFoundException("Evento calendario non trovato"));
     }
 
+    private CalendarEventType requireType(Long id) {
+        return calendarEventTypeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Tipo evento non trovato"));
+    }
+
     private void applyRequest(CalendarEvent event, CalendarEventUpsertRequest request, Long userId) {
         if (request.endDatetime() != null && request.endDatetime().isBefore(request.startDatetime())) {
             throw new BadRequestException("La data di fine precede la data di inizio");
         }
-        CalendarEventType type = request.eventTypeId() != null
-                ? calendarEventTypeRepository.findById(request.eventTypeId())
-                        .orElseThrow(() -> new NotFoundException("Tipo evento non trovato"))
-                : null;
+        CalendarEventType type = request.eventTypeId() != null ? requireType(request.eventTypeId()) : null;
         // Validazione prima di toccare l'entita': un 400 non lascia modifiche a meta'.
         Show show = null;
         Set<String> rehearsalRoles = new LinkedHashSet<>();
@@ -174,7 +180,9 @@ public class CalendarService {
         event.setEndDatetime(request.endDatetime());
         event.setLocation(request.location());
         event.setVenue(request.venue());
-        event.setTargetRoles(RoleCsv.normalize(request.targetRoles()));
+        List<String> targetRoles = RoleCsv.parse(request.targetRoles());
+        RoleCsv.requireKnownRoles(targetRoles, role -> roleRepository.findByName(role).isPresent());
+        event.setTargetRoles(RoleCsv.format(targetRoles));
         // Spettacolo e ruoli convocati valgono solo per i tipi prova: sugli altri restano vuoti.
         event.setShow(show);
         event.setRehearsalRoles(rehearsalRoles);

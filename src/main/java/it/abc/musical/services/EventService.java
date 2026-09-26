@@ -10,6 +10,7 @@ import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.EventRepository;
 import it.abc.musical.repositories.EventTypeRepository;
 import it.abc.musical.repositories.ShowRepository;
+import it.abc.musical.util.HeroCropRules;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,7 @@ public class EventService {
     private final ShowRepository showRepository;
     private final StorageService storageService;
     private final FileValidationService fileValidationService;
+    private final AuditLogService auditLogService;
 
     // ------------------------------------------------------------------ public
 
@@ -92,7 +94,9 @@ public class EventService {
                 copyHeroZoomFromSource(event, request.posterSourceEventId());
             }
         }
-        return eventRepository.save(event);
+        event = eventRepository.save(event);
+        auditLogService.record("CREATE", "Event", event.getId());
+        return event;
     }
 
     @Transactional
@@ -104,7 +108,9 @@ public class EventService {
             event.setPosterImageUrl(storePoster(poster));
             storageService.deleteAfterCommit(oldPoster);
         }
-        return eventRepository.save(event);
+        event = eventRepository.save(event);
+        auditLogService.record("UPDATE", "Event", event.getId());
+        return event;
     }
 
     @Transactional
@@ -112,6 +118,7 @@ public class EventService {
         Event event = activeEvent(id);
         event.setDeletedAt(LocalDateTime.now());
         eventRepository.save(event);
+        auditLogService.record("DELETE", "Event", id);
     }
 
     // ------------------------------------------------------------------ internals
@@ -123,9 +130,9 @@ public class EventService {
 
     private void applyRequest(Event event, EventUpsertRequest request, Long userId) {
         validateBookingWindow(request.bookingOpenAt(), request.bookingCloseAt(), request.eventDate());
-        validateHeroFocus(request.heroFocusX(), request.heroFocusY());
-        validateHeroFocusMobile(request.heroFocusMobileX(), request.heroFocusMobileY());
-        validateHeroZoom(request.heroZoomDesktop(), request.heroZoomMobile());
+        HeroCropRules.validateFocus(request.heroFocusX(), request.heroFocusY());
+        HeroCropRules.validateFocus(request.heroFocusMobileX(), request.heroFocusMobileY());
+        HeroCropRules.validateZoom(request.heroZoomDesktop(), request.heroZoomMobile());
         event.setTitle(request.title().trim());
         event.setDescription(request.description());
         event.setEventDate(request.eventDate());
@@ -153,49 +160,6 @@ public class EventService {
         event.setHeroZoomDesktop(request.heroZoomDesktop());
         event.setHeroZoomMobile(request.heroZoomMobile());
         event.setUpdatedBy(userId);
-    }
-
-    /**
-     * Punto focale della locandina: entrambi assenti (centro) oppure entrambi in 0..100.
-     * Un solo valore presente, o fuori range, è un input incoerente e va rifiutato qui invece
-     * che lasciarlo diventare un crop CSS silenziosamente sbagliato lato frontend.
-     */
-    private void validateHeroFocus(Integer heroFocusX, Integer heroFocusY) {
-        boolean bothNull = heroFocusX == null && heroFocusY == null;
-        boolean bothInRange = heroFocusX != null && heroFocusY != null
-                && heroFocusX >= 0 && heroFocusX <= 100
-                && heroFocusY >= 0 && heroFocusY <= 100;
-        if (!bothNull && !bothInRange) {
-            throw new BadRequestException("Punto focale non valido");
-        }
-    }
-
-    /**
-     * Punto focale mobile: stessa regola del punto focale desktop, ma indipendente da esso
-     * (ritaglio separato per il telefono).
-     */
-    private void validateHeroFocusMobile(Integer heroFocusMobileX, Integer heroFocusMobileY) {
-        boolean bothNull = heroFocusMobileX == null && heroFocusMobileY == null;
-        boolean bothInRange = heroFocusMobileX != null && heroFocusMobileY != null
-                && heroFocusMobileX >= 0 && heroFocusMobileX <= 100
-                && heroFocusMobileY >= 0 && heroFocusMobileY <= 100;
-        if (!bothNull && !bothInRange) {
-            throw new BadRequestException("Punto focale non valido");
-        }
-    }
-
-    /**
-     * Fattore di zoom della locandina in hero: desktop e mobile sono indipendenti fra loro e
-     * dal punto focale, ciascuno o assente (100, cioè invariato) o in 10..300.
-     */
-    private void validateHeroZoom(Integer heroZoomDesktop, Integer heroZoomMobile) {
-        if (!isValidZoom(heroZoomDesktop) || !isValidZoom(heroZoomMobile)) {
-            throw new BadRequestException("Zoom non valido");
-        }
-    }
-
-    private static boolean isValidZoom(Integer zoom) {
-        return zoom == null || (zoom >= 10 && zoom <= 300);
     }
 
     /**

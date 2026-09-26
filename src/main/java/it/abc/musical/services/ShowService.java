@@ -8,9 +8,9 @@ import it.abc.musical.entities.Show;
 import it.abc.musical.entities.ShowCast;
 import it.abc.musical.entities.ShowImage;
 import it.abc.musical.enums.UploadTargetType;
-import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.ShowRepository;
+import it.abc.musical.util.HeroCropRules;
 import it.abc.musical.util.HtmlSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -34,6 +34,7 @@ public class ShowService {
 
     private final ShowRepository showRepository;
     private final StorageService storageService;
+    private final AuditLogService auditLogService;
 
     // ------------------------------------------------------------------ public
 
@@ -83,7 +84,9 @@ public class ShowService {
             storageService.validateManagedPath(request.posterPath(), UploadTargetType.SHOW_POSTER);
             show.setPosterImageUrl(request.posterPath());
         }
-        return showRepository.save(show);
+        show = showRepository.save(show);
+        auditLogService.record("CREATE", "Show", show.getId());
+        return show;
     }
 
     @Transactional
@@ -97,6 +100,7 @@ public class ShowService {
                 boolean remove = !retain.contains(image.getId());
                 if (remove) {
                     storageService.deleteAfterCommit(image.getImageUrl());
+                    auditLogService.record("REMOVE_IMAGE", "ShowImage", image.getId());
                 }
                 return remove;
             });
@@ -107,7 +111,9 @@ public class ShowService {
             storageService.deleteAfterCommit(show.getPosterImageUrl());
             show.setPosterImageUrl(request.posterPath());
         }
-        return showRepository.save(show);
+        show = showRepository.save(show);
+        auditLogService.record("UPDATE", "Show", show.getId());
+        return show;
     }
 
     @Transactional
@@ -115,6 +121,7 @@ public class ShowService {
         Show show = activeShow(id);
         show.setDeletedAt(LocalDateTime.now());
         showRepository.save(show);
+        auditLogService.record("DELETE", "Show", id);
     }
 
     @Transactional
@@ -134,6 +141,7 @@ public class ShowService {
         // che il cascade-persist automatico (già attivo perché `show` è managed) inserisca
         // la stessa istanza, popolandone correttamente l'id.
         showRepository.flush();
+        auditLogService.record("ADD_IMAGE", "ShowImage", showImage.getId());
         return showImage;
     }
 
@@ -144,53 +152,10 @@ public class ShowService {
                 .orElseThrow(() -> new NotFoundException("Spettacolo non trovato"));
     }
 
-    /**
-     * Punto focale della locandina: entrambi assenti (centro) oppure entrambi in 0..100.
-     * Un solo valore presente, o fuori range, è un input incoerente e va rifiutato qui invece
-     * che lasciarlo diventare un crop CSS silenziosamente sbagliato lato frontend.
-     */
-    private void validateHeroFocus(Integer heroFocusX, Integer heroFocusY) {
-        boolean bothNull = heroFocusX == null && heroFocusY == null;
-        boolean bothInRange = heroFocusX != null && heroFocusY != null
-                && heroFocusX >= 0 && heroFocusX <= 100
-                && heroFocusY >= 0 && heroFocusY <= 100;
-        if (!bothNull && !bothInRange) {
-            throw new BadRequestException("Punto focale non valido");
-        }
-    }
-
-    /**
-     * Punto focale mobile: stessa regola del punto focale desktop, ma indipendente da esso
-     * (ritaglio separato per il telefono).
-     */
-    private void validateHeroFocusMobile(Integer heroFocusMobileX, Integer heroFocusMobileY) {
-        boolean bothNull = heroFocusMobileX == null && heroFocusMobileY == null;
-        boolean bothInRange = heroFocusMobileX != null && heroFocusMobileY != null
-                && heroFocusMobileX >= 0 && heroFocusMobileX <= 100
-                && heroFocusMobileY >= 0 && heroFocusMobileY <= 100;
-        if (!bothNull && !bothInRange) {
-            throw new BadRequestException("Punto focale non valido");
-        }
-    }
-
-    /**
-     * Fattore di zoom della locandina in hero: desktop e mobile sono indipendenti fra loro e
-     * dal punto focale, ciascuno o assente (100, cioè invariato) o in 10..300.
-     */
-    private void validateHeroZoom(Integer heroZoomDesktop, Integer heroZoomMobile) {
-        if (!isValidZoom(heroZoomDesktop) || !isValidZoom(heroZoomMobile)) {
-            throw new BadRequestException("Zoom non valido");
-        }
-    }
-
-    private static boolean isValidZoom(Integer zoom) {
-        return zoom == null || (zoom >= 10 && zoom <= 300);
-    }
-
     private void applyRequest(Show show, ShowUpsertRequest request, Long userId) {
-        validateHeroFocus(request.heroFocusX(), request.heroFocusY());
-        validateHeroFocusMobile(request.heroFocusMobileX(), request.heroFocusMobileY());
-        validateHeroZoom(request.heroZoomDesktop(), request.heroZoomMobile());
+        HeroCropRules.validateFocus(request.heroFocusX(), request.heroFocusY());
+        HeroCropRules.validateFocus(request.heroFocusMobileX(), request.heroFocusMobileY());
+        HeroCropRules.validateZoom(request.heroZoomDesktop(), request.heroZoomMobile());
         show.setTitle(request.title().trim());
         show.setPlot(HtmlSanitizer.sanitize(request.plot() != null ? request.plot() : ""));
         show.setDurationMinutes(request.durationMinutes() != null ? request.durationMinutes() : 0);
