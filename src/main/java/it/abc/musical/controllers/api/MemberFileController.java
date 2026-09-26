@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -70,11 +69,19 @@ public class MemberFileController {
                                                 Authentication authentication) {
         Document document = mediaService.byUuidForRoles(uuid, AuthUtil.roles(authentication));
         FileSystemResource resource = new FileSystemResource(storageService.resolve(document.getFilePath()));
-        List<HttpRange> ranges = HttpRange.parseRanges(rangeHeader);
         long contentLength = resource.getFile().length();
-        HttpRange range = ranges.get(0);
-        long start = range.getRangeStart(contentLength);
-        long end = range.getRangeEnd(contentLength);
+        long start;
+        long end;
+        try {
+            HttpRange range = HttpRange.parseRanges(rangeHeader).get(0);
+            start = range.getRangeStart(contentLength);
+            end = range.getRangeEnd(contentLength);
+        } catch (IllegalArgumentException e) {
+            // Range illeggibile, o fuori dalla lunghezza reale del file (start >= contentLength).
+            return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                    .header(HttpHeaders.CONTENT_RANGE, "bytes */" + contentLength)
+                    .build();
+        }
         long rangeLength = Math.min(MAX_CHUNK, end - start + 1);
         // Un lettore audio/video apre il file con "Range: bytes=0-" e poi chiede i pezzi successivi:
         // conta come accesso solo la richiesta che parte dall'inizio.

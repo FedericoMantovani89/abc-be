@@ -4,12 +4,17 @@ import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.exceptions.ConflictException;
 import it.abc.musical.exceptions.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -39,6 +44,36 @@ public class GlobalExceptionHandler {
         ex.getBindingResult().getFieldErrors()
                 .forEach(fe -> fields.putIfAbsent(fe.getField(), fe.getDefaultMessage()));
         return ResponseEntity.badRequest().body(Map.of("error", "Dati non validi", "fields", fields));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<Map<String, String>> unreadableBody(HttpMessageNotReadableException ex) {
+        return ResponseEntity.badRequest().body(Map.of("error", "Corpo della richiesta non leggibile"));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<Map<String, String>> typeMismatch(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", "Parametro '%s' non valido".formatted(ex.getName())));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    ResponseEntity<Map<String, String>> missingParameter(MissingServletRequestParameterException ex) {
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", "Parametro '%s' obbligatorio".formatted(ex.getParameterName())));
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    ResponseEntity<Map<String, String>> resourceNotFound(NoResourceFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Risorsa non trovata"));
+    }
+
+    /** Vincolo del database violato: mai il testo SQL nella risposta, solo nel log. */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<Map<String, String>> dataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("Vincolo del database violato", ex);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "Operazione non valida: viola un vincolo del database"));
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
