@@ -1,6 +1,7 @@
 package it.abc.musical.util;
 
 import it.abc.musical.security.CustomUserDetails;
+import it.abc.musical.security.Roles;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -36,9 +37,6 @@ public final class AuthUtil {
         return null;
     }
 
-    /** Ruoli che vedono comunque tutto (calendario, comunicazioni, archivio). */
-    private static final Set<String> SEE_ALL_ROLES = Set.of("ADMIN", "GOD");
-
     /** True se l'utente ha almeno uno dei ruoli nella stringa comma-separated (null/blank = tutti). */
     public static boolean matchesTargetRoles(String targetRoles, Set<String> userRoles) {
         return matchesRoles(RoleCsv.parse(targetRoles), userRoles);
@@ -49,7 +47,8 @@ public final class AuthUtil {
         if (allowedRoles == null || allowedRoles.isEmpty()) {
             return true;
         }
-        if (userRoles.stream().anyMatch(SEE_ALL_ROLES::contains)) {
+        // Gli amministratori vedono comunque tutto (calendario, comunicazioni, archivio).
+        if (userRoles.stream().anyMatch(Roles.ADMINS::contains)) {
             return true;
         }
         return allowedRoles.stream().anyMatch(userRoles::contains);
