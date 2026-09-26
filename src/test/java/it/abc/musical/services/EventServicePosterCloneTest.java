@@ -2,6 +2,7 @@ package it.abc.musical.services;
 
 import it.abc.musical.dto.AdminEventDtos.EventUpsertRequest;
 import it.abc.musical.entities.Event;
+import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.repositories.EventRepository;
 import it.abc.musical.repositories.EventTypeRepository;
@@ -204,7 +205,7 @@ class EventServicePosterCloneTest {
                 LocalDateTime.of(2027, 1, 5, 10, 0), LocalDateTime.of(2027, 1, 1, 10, 0),
                 null, null, null, null, null, 99L, null, null, null, null, null, null);
 
-        Path postersDir = uploadDir.resolve(StorageService.POSTERS_DIR);
+        Path postersDir = uploadDir.resolve(UploadTargetType.SHOW_POSTER.subdir());
         long filesBefore;
         try (Stream<Path> listing = Files.list(postersDir)) {
             filesBefore = listing.count();

@@ -88,10 +88,4 @@ public class AdminShowsController {
         ShowImage showImage = showService.addGalleryImage(id, request.imagePath(), request.caption());
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("imageId", showImage.getId()));
     }
-
-    @DeleteMapping("/{id}/images/{imageId}")
-    public ResponseEntity<Void> deleteImage(@PathVariable Long id, @PathVariable Long imageId) {
-        showService.deleteGalleryImage(id, imageId);
-        return ResponseEntity.noContent().build();
-    }
 }

@@ -4,12 +4,12 @@ import it.abc.musical.dto.AdminEventDtos.EventUpsertRequest;
 import it.abc.musical.dto.EventDtos.EventDetailDto;
 import it.abc.musical.dto.EventDtos.EventSummaryDto;
 import it.abc.musical.entities.Event;
+import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.EventRepository;
 import it.abc.musical.repositories.EventTypeRepository;
 import it.abc.musical.repositories.ShowRepository;
-import it.abc.musical.util.FileTypeUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -100,8 +100,9 @@ public class EventService {
         Event event = activeEvent(id);
         applyRequest(event, request, userId);
         if (poster != null && !poster.isEmpty()) {
-            storageService.delete(event.getPosterImageUrl());
+            String oldPoster = event.getPosterImageUrl();
             event.setPosterImageUrl(storePoster(poster));
+            storageService.deleteAfterCommit(oldPoster);
         }
         return eventRepository.save(event);
     }
@@ -216,12 +217,8 @@ public class EventService {
     }
 
     private String storePoster(MultipartFile poster) {
-        String extension = StorageService.extensionOf(poster.getOriginalFilename());
-        if (FileTypeUtil.categoryOf(extension) != FileTypeUtil.Category.IMAGE) {
-            throw new BadRequestException("Sono ammesse solo immagini JPG o PNG");
-        }
-        fileValidationService.validate(poster);
-        return storageService.store(poster, StorageService.POSTERS_DIR);
+        fileValidationService.validate(poster, UploadTargetType.SHOW_POSTER);
+        return storageService.store(poster, UploadTargetType.SHOW_POSTER);
     }
 
     /**
@@ -237,7 +234,7 @@ public class EventService {
         if (sourcePosterUrl == null || sourcePosterUrl.isBlank()) {
             return null;
         }
-        return storageService.copy(sourcePosterUrl, StorageService.POSTERS_DIR);
+        return storageService.copy(sourcePosterUrl, UploadTargetType.SHOW_POSTER);
     }
 
     /**

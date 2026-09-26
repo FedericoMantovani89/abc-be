@@ -129,4 +129,29 @@ class AdminUploadApiTest {
         mockMvc.perform(post("/api/admin/uploads/" + uploadId + "/complete").with(asRole("ADMIN")))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    @Order(6)
+    void initOverSizeLimitIsRejectedBeforeAnyByteIsSent() throws Exception {
+        // Limite documenti 10 MB: il rifiuto arriva all'avvio, non alla chiusura.
+        mockMvc.perform(post("/api/admin/uploads").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("""
+                                {"targetType": "MEDIA_DOCUMENT", "filename": "copione.pdf", "totalSize": 15728640}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(Matchers.startsWith("File troppo grande")));
+    }
+
+    @Test
+    @Order(7)
+    void initWithWrongCategoryForTargetIsRejected() throws Exception {
+        mockMvc.perform(post("/api/admin/uploads").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("""
+                                {"targetType": "SHOW_POSTER", "filename": "copione.pdf", "totalSize": 10}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(Matchers.containsString("per questa destinazione")));
+    }
 }

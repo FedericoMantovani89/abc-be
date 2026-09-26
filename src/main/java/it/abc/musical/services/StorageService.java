@@ -1,10 +1,13 @@
 package it.abc.musical.services;
 
+import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.exceptions.BadRequestException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -18,16 +21,12 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * Salvataggio file su filesystem sotto app.upload-dir.
- * I path restituiti sono relativi e iniziano con "/" (es. "/posters/abc.jpg").
+ * Salvataggio file su filesystem sotto app.upload-dir, una sottocartella per ogni
+ * {@link UploadTargetType}. I path restituiti sono relativi e iniziano con "/" (es. "/posters/abc.jpg").
  */
 @Slf4j
 @Service
 public class StorageService {
-
-    public static final String POSTERS_DIR = "posters";
-    public static final String GALLERY_DIR = "show_gallery";
-    public static final String MEDIA_DIR = "media";
 
     private static final Pattern MANAGED_FILE_PATTERN =
             Pattern.compile("^/[a-z_]+/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.[a-z0-9]+$");
@@ -41,27 +40,22 @@ public class StorageService {
     @PostConstruct
     void init() {
         try {
-            Files.createDirectories(root.resolve(POSTERS_DIR));
-            Files.createDirectories(root.resolve(GALLERY_DIR));
-            Files.createDirectories(root.resolve(MEDIA_DIR));
+            for (UploadTargetType target : UploadTargetType.values()) {
+                Files.createDirectories(root.resolve(target.subdir()));
+            }
         } catch (IOException e) {
             throw new UncheckedIOException("Impossibile creare la directory upload: " + root, e);
         }
     }
 
-    public String store(MultipartFile file, String subdir) {
-        String extension = extensionOf(file.getOriginalFilename());
-        String fileName = UUID.randomUUID() + (extension.isEmpty() ? "" : "." + extension);
-        Path target = root.resolve(subdir).resolve(fileName).normalize();
-        if (!target.startsWith(root)) {
-            throw new IllegalArgumentException("Path non valido");
-        }
+    public String store(MultipartFile file, UploadTargetType target) {
+        String fileName = newFileName(extensionOf(file.getOriginalFilename()));
         try (InputStream in = file.getInputStream()) {
-            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(in, newTarget(target, fileName), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new UncheckedIOException("Salvataggio file fallito", e);
         }
-        return "/" + subdir + "/" + fileName;
+        return "/" + target.subdir() + "/" + fileName;
     }
 
     /**
@@ -69,40 +63,58 @@ public class StorageService {
      * nome nuovo, nello stesso stile di store(): usata per clonare una locandina senza far
      * transitare i byte dal client.
      */
-    public String copy(String sourceRelativePath, String subdir) {
+    public String copy(String sourceRelativePath, UploadTargetType target) {
         Path source = resolve(sourceRelativePath);
-        String extension = extensionOf(sourceRelativePath);
-        String fileName = UUID.randomUUID() + (extension.isEmpty() ? "" : "." + extension);
-        Path target = root.resolve(subdir).resolve(fileName).normalize();
-        if (!target.startsWith(root)) {
-            throw new IllegalArgumentException("Path non valido");
-        }
+        String fileName = newFileName(extensionOf(sourceRelativePath));
         try {
-            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(source, newTarget(target, fileName), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new UncheckedIOException("Copia file fallita", e);
         }
-        return "/" + subdir + "/" + fileName;
+        return "/" + target.subdir() + "/" + fileName;
     }
 
     /** Risolve un path relativo (es. "/media/x.pdf") nel file assoluto su disco. */
     public Path resolve(String relativePath) {
         String clean = relativePath.startsWith("/") ? relativePath.substring(1) : relativePath;
-        Path target = root.resolve(clean).normalize();
-        if (!target.startsWith(root)) {
-            throw new IllegalArgumentException("Path non valido");
-        }
-        return target;
+        return confined(root.resolve(clean));
     }
 
+    /**
+     * Cancella il file quando la transazione in corso viene confermata; se la transazione si
+     * annulla il file resta, insieme alla riga che lo cita. Senza transazione cancella subito.
+     * E' l'unico modo di togliere un file sostituito (locandina, immagine della galleria).
+     */
+    public void deleteAfterCommit(String relativePath) {
+        if (relativePath == null || relativePath.isBlank()) {
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            delete(relativePath);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                delete(relativePath);
+            }
+        });
+    }
+
+    /** Cancellazione immediata; per sostituire un file in una transazione usare deleteAfterCommit. */
     public void delete(String relativePath) {
         if (relativePath == null || relativePath.isBlank()) {
             return;
         }
+        deleteQuietly(resolve(relativePath));
+    }
+
+    /** Cancella un file se esiste; un errore finisce nel log e non interrompe l'operazione. */
+    public void deleteQuietly(Path path) {
         try {
-            Files.deleteIfExists(resolve(relativePath));
+            Files.deleteIfExists(path);
         } catch (IOException e) {
-            log.warn("Eliminazione file fallita: {}", relativePath, e);
+            log.warn("Eliminazione file fallita: {}", path, e);
         }
     }
 
@@ -115,9 +127,9 @@ public class StorageService {
      * Usato dagli endpoint di attach (locandina, gallery, documenti) per rifiutare path che non
      * corrispondono a un file effettivamente prodotto da un upload completato.
      */
-    public void validateManagedPath(String relativePath, String expectedSubdir) {
+    public void validateManagedPath(String relativePath, UploadTargetType target) {
         if (relativePath == null || !MANAGED_FILE_PATTERN.matcher(relativePath).matches()
-                || !relativePath.startsWith("/" + expectedSubdir + "/")) {
+                || !relativePath.startsWith("/" + target.subdir() + "/")) {
             throw new BadRequestException("Path non valido: " + relativePath);
         }
     }
@@ -128,5 +140,21 @@ public class StorageService {
         }
         int dot = fileName.lastIndexOf('.');
         return dot < 0 ? "" : fileName.substring(dot + 1).toLowerCase(Locale.ROOT);
+    }
+
+    private static String newFileName(String extension) {
+        return UUID.randomUUID() + (extension.isEmpty() ? "" : "." + extension);
+    }
+
+    private Path newTarget(UploadTargetType target, String fileName) {
+        return confined(root.resolve(target.subdir()).resolve(fileName));
+    }
+
+    private Path confined(Path path) {
+        Path normalized = path.normalize();
+        if (!normalized.startsWith(root)) {
+            throw new BadRequestException("Path non valido");
+        }
+        return normalized;
     }
 }

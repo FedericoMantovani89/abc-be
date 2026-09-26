@@ -5,11 +5,8 @@ import it.abc.musical.dto.UploadDtos.InitUploadResponse;
 import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.exceptions.NotFoundException;
-import it.abc.musical.util.FileTypeUtil;
-import it.abc.musical.util.FileTypeUtil.Category;
 import it.abc.musical.util.TempFileMultipartFile;
 import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -25,7 +22,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * Upload a chunk: sessioni in-memory, scrittura idempotente per indice di chunk,
@@ -33,7 +29,6 @@ import java.util.stream.Collectors;
  * schedulato delle sessioni abbandonate. Nessun resume dopo riavvio del backend
  * o chiusura del client (fuori scope, vedi design doc).
  */
-@Slf4j
 @Service
 public class ChunkedUploadService {
 
@@ -70,24 +65,7 @@ public class ChunkedUploadService {
     }
 
     public InitUploadResponse init(UploadTargetType targetType, String filename, long totalSize) {
-        String extension = StorageService.extensionOf(filename);
-        if (!FileTypeUtil.isAllowedExtension(extension)) {
-            throw new BadRequestException("Tipo di file .%s non consentito. Estensioni ammesse: %s"
-                    .formatted(extension, FileTypeUtil.allowedExtensionsList()));
-        }
-        Category category = FileTypeUtil.categoryOf(extension);
-        if (!targetType.allowedCategories().contains(category)) {
-            String allowedLabels = targetType.allowedCategories().stream()
-                    .sorted()
-                    .map(FileTypeUtil::labelOf)
-                    .collect(Collectors.joining(", "));
-            throw new BadRequestException(
-                    "Tipo di file .%s non consentito per questa destinazione: sono ammessi solo file di tipo %s."
-                            .formatted(extension, allowedLabels));
-        }
-        if (totalSize <= 0) {
-            throw new BadRequestException("Dimensione file non valida");
-        }
+        fileValidationService.checkAllowed(filename, totalSize, targetType);
         if (tmpDir.toFile().getUsableSpace() < totalSize) {
             throw new BadRequestException("Spazio disco insufficiente per completare l'upload");
         }
@@ -128,18 +106,18 @@ public class ChunkedUploadService {
                     "Upload incompleto: dimensione ricevuta non corrisponde a quella dichiarata");
         }
         TempFileMultipartFile adapted = new TempFileMultipartFile(tempFile, session.originalFilename(), null);
-        String mimeType = fileValidationService.validate(adapted);
-        String path = storageService.store(adapted, session.targetType().subdir());
+        String mimeType = fileValidationService.validate(adapted, session.targetType());
+        String path = storageService.store(adapted, session.targetType());
 
         sessions.remove(uploadId);
-        deleteQuietly(session.tempFile());
+        storageService.deleteQuietly(session.tempFile());
         return new CompleteUploadResponse(path, mimeType, session.totalSize(), session.originalFilename());
     }
 
     public void cancel(UUID uploadId) {
         Session session = sessions.remove(uploadId);
         if (session != null) {
-            deleteQuietly(session.tempFile());
+            storageService.deleteQuietly(session.tempFile());
         }
     }
 
@@ -149,7 +127,7 @@ public class ChunkedUploadService {
         sessions.values().removeIf(session -> {
             boolean expired = session.createdAt().isBefore(cutoff);
             if (expired) {
-                deleteQuietly(session.tempFile());
+                storageService.deleteQuietly(session.tempFile());
             }
             return expired;
         });
@@ -166,7 +144,7 @@ public class ChunkedUploadService {
             boolean tracked = sessions.values().stream()
                     .anyMatch(s -> s.tempFile().toFile().equals(file));
             if (!tracked && Instant.ofEpochMilli(file.lastModified()).isBefore(cutoff)) {
-                deleteQuietly(file.toPath());
+                storageService.deleteQuietly(file.toPath());
             }
         }
     }
@@ -177,13 +155,5 @@ public class ChunkedUploadService {
             throw new NotFoundException("Sessione di upload non trovata o scaduta");
         }
         return session;
-    }
-
-    private void deleteQuietly(Path path) {
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException e) {
-            log.warn("Eliminazione file temporaneo fallita: {}", path, e);
-        }
     }
 }

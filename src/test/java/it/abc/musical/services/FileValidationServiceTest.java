@@ -1,5 +1,6 @@
 package it.abc.musical.services;
 
+import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.exceptions.BadRequestException;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
@@ -23,21 +24,21 @@ class FileValidationServiceTest {
     void validPdfIsAccepted() {
         var file = new MockMultipartFile("file", "partitura.pdf", "application/pdf", PDF_BYTES);
 
-        assertThat(service.validate(file)).isEqualTo("application/pdf");
+        assertThat(service.validate(file, UploadTargetType.MEDIA_DOCUMENT)).isEqualTo("application/pdf");
     }
 
     @Test
     void validPngIsAccepted() {
         var file = new MockMultipartFile("file", "foto.png", "image/png", PNG_BYTES);
 
-        assertThat(service.validate(file)).isEqualTo("image/png");
+        assertThat(service.validate(file, UploadTargetType.MEDIA_DOCUMENT)).isEqualTo("image/png");
     }
 
     @Test
     void disallowedExtensionIsRejected() {
         var file = new MockMultipartFile("file", "script.exe", "application/octet-stream", EXE_BYTES);
 
-        assertThatThrownBy(() -> service.validate(file))
+        assertThatThrownBy(() -> service.validate(file, UploadTargetType.MEDIA_DOCUMENT))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("non consentito");
     }
@@ -46,7 +47,7 @@ class FileValidationServiceTest {
     void executableRenamedAsPdfIsRejected() {
         var file = new MockMultipartFile("file", "innocuo.pdf", "application/pdf", EXE_BYTES);
 
-        assertThatThrownBy(() -> service.validate(file))
+        assertThatThrownBy(() -> service.validate(file, UploadTargetType.MEDIA_DOCUMENT))
                 .isInstanceOf(BadRequestException.class);
     }
 
@@ -54,7 +55,7 @@ class FileValidationServiceTest {
     void oversizedImageIsRejected() {
         var file = new MockMultipartFile("file", "grande.png", "image/png", new byte[6 * 1024 * 1024]);
 
-        assertThatThrownBy(() -> service.validate(file))
+        assertThatThrownBy(() -> service.validate(file, UploadTargetType.MEDIA_DOCUMENT))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("troppo grande");
     }

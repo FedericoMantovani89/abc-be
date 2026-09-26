@@ -84,6 +84,14 @@ class ChunkedUploadServiceTest {
     }
 
     @Test
+    void initRejectsFileOverTheCategoryLimit() {
+        // Immagini: limite 5 MB. Il rifiuto arriva all'avvio, prima di qualsiasi byte.
+        assertThatThrownBy(() -> service.init(UploadTargetType.SHOW_POSTER, "poster.jpg", 6L * 1024 * 1024))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageStartingWith("File troppo grande");
+    }
+
+    @Test
     void writeChunkRejectsOffsetBeyondDeclaredTotalSize() {
         InitUploadResponse init = service.init(UploadTargetType.SHOW_POSTER, "poster.jpg", 10);
         assertThatThrownBy(() -> service.writeChunk(init.uploadId(), 5, new byte[10]))

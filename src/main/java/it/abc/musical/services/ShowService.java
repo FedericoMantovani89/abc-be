@@ -7,6 +7,7 @@ import it.abc.musical.dto.ShowDtos.ShowSummaryDto;
 import it.abc.musical.entities.Show;
 import it.abc.musical.entities.ShowCast;
 import it.abc.musical.entities.ShowImage;
+import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.ShowRepository;
@@ -79,7 +80,7 @@ public class ShowService {
         show.setCreatedBy(userId);
         applyRequest(show, request, userId);
         if (request.posterPath() != null && !request.posterPath().isBlank()) {
-            storageService.validateManagedPath(request.posterPath(), StorageService.POSTERS_DIR);
+            storageService.validateManagedPath(request.posterPath(), UploadTargetType.SHOW_POSTER);
             show.setPosterImageUrl(request.posterPath());
         }
         return showRepository.save(show);
@@ -95,15 +96,15 @@ public class ShowService {
             show.getImages().removeIf(image -> {
                 boolean remove = !retain.contains(image.getId());
                 if (remove) {
-                    storageService.delete(image.getImageUrl());
+                    storageService.deleteAfterCommit(image.getImageUrl());
                 }
                 return remove;
             });
         }
         if (request.posterPath() != null && !request.posterPath().isBlank()
                 && !request.posterPath().equals(show.getPosterImageUrl())) {
-            storageService.validateManagedPath(request.posterPath(), StorageService.POSTERS_DIR);
-            storageService.delete(show.getPosterImageUrl());
+            storageService.validateManagedPath(request.posterPath(), UploadTargetType.SHOW_POSTER);
+            storageService.deleteAfterCommit(show.getPosterImageUrl());
             show.setPosterImageUrl(request.posterPath());
         }
         return showRepository.save(show);
@@ -118,7 +119,7 @@ public class ShowService {
 
     @Transactional
     public ShowImage addGalleryImage(Long showId, String imagePath, String caption) {
-        storageService.validateManagedPath(imagePath, StorageService.GALLERY_DIR);
+        storageService.validateManagedPath(imagePath, UploadTargetType.SHOW_GALLERY_IMAGE);
         Show show = activeShow(showId);
         ShowImage showImage = new ShowImage();
         showImage.setShow(show);
@@ -134,18 +135,6 @@ public class ShowService {
         // la stessa istanza, popolandone correttamente l'id.
         showRepository.flush();
         return showImage;
-    }
-
-    @Transactional
-    public void deleteGalleryImage(Long showId, Long imageId) {
-        Show show = activeShow(showId);
-        ShowImage image = show.getImages().stream()
-                .filter(i -> i.getId().equals(imageId))
-                .findFirst()
-                .orElseThrow(() -> new NotFoundException("Immagine non trovata"));
-        storageService.delete(image.getImageUrl());
-        show.getImages().remove(image);
-        showRepository.save(show);
     }
 
     // ------------------------------------------------------------------ internals
