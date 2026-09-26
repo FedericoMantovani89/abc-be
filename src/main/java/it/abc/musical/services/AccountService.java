@@ -43,14 +43,7 @@ public class AccountService {
     @Transactional
     public void changePassword(Authentication authentication, ChangePasswordRequest request) {
         User user = currentUser(authentication);
-        // Se ha già una password locale deve dimostrare di conoscerla; gli utenti
-        // OAuth-only la impostano per la prima volta senza password attuale.
-        if (user.getPassword() != null) {
-            if (request.currentPassword() == null
-                    || !passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
-                throw new BadRequestException("Password attuale non corretta");
-            }
-        }
+        requireCurrentPassword(user, request.currentPassword());
         user.setPassword(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
         auditLogService.record("CHANGE_PASSWORD", "User", user.getId());
@@ -63,12 +56,7 @@ public class AccountService {
     @Transactional
     public void deleteAccount(Authentication authentication, DeleteAccountRequest request) {
         User user = currentUser(authentication);
-        if (user.getPassword() != null) {
-            String current = request != null ? request.currentPassword() : null;
-            if (current == null || !passwordEncoder.matches(current, user.getPassword())) {
-                throw new BadRequestException("Password attuale non corretta");
-            }
-        }
+        requireCurrentPassword(user, request != null ? request.currentPassword() : null);
         Long id = user.getId();
         user.setDeletedAt(LocalDateTime.now());
         user.setActive(false);
@@ -78,9 +66,19 @@ public class AccountService {
         user.setLastName(null);
         user.setOauthProvider(null);
         user.setOauthId(null);
-        user.setProfilePictureUrl(null);
         userRepository.save(user);
         auditLogService.record("DELETE_ACCOUNT", "User", id);
+    }
+
+    /**
+     * Chi ha già una password locale deve dimostrare di conoscerla; gli utenti
+     * OAuth-only non ne hanno una e passano senza.
+     */
+    private void requireCurrentPassword(User user, String currentPassword) {
+        if (user.getPassword() != null
+                && (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPassword()))) {
+            throw new BadRequestException("Password attuale non corretta");
+        }
     }
 
     private User currentUser(Authentication authentication) {

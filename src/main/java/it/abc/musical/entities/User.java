@@ -39,9 +39,6 @@ public class User {
     @Column(name = "oauth_id")
     private String oauthId;
 
-    @Column(name = "profile_picture_url", length = 500)
-    private String profilePictureUrl;
-
     @Column(nullable = false)
     private boolean active = true;
 
