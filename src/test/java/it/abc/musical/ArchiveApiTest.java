@@ -8,20 +8,8 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -29,7 +17,6 @@ import java.nio.file.Path;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -45,19 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Struttura costruita dai test: "Regia" (solo STAFF) > "Libera" (nessun ruolo) > copione.pdf;
  * "Pubblica" (nessun ruolo) > avviso.pdf.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class ArchiveApiTest {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine");
-
-    @Autowired
-    MockMvc mockMvc;
+class ArchiveApiTest extends IntegrationTestBase {
 
     @Autowired
     StorageService storageService;
@@ -65,18 +41,10 @@ class ArchiveApiTest {
     @Autowired
     AuditLogRepository auditLogRepository;
 
-    @MockitoBean
-    JavaMailSender mailSender;
-
     static Long regiaId;
     static Long liberaId;
     static String copioneUuid;
     static String avvisoUuid;
-
-    private static RequestPostProcessor asRole(String role) {
-        return jwt().authorities(new SimpleGrantedAuthority("ROLE_" + role))
-                .jwt(j -> j.subject("test@abc.it"));
-    }
 
     private Long createFolder(String name, Long parentId) throws Exception {
         String body = parentId == null
@@ -131,8 +99,27 @@ class ArchiveApiTest {
         avvisoUuid = attachPdf(pubblicaId, "avviso \"importante\" è qui.pdf");
     }
 
+    /**
+     * media/ non e' fra le cartelle pubbliche di SecurityConfig (derivate da
+     * UploadTargetType.publiclyServed(), come posters/ e show_gallery/): un percorso diretto
+     * non passa da WebMvcConfig (nessun resource handler la serve) e cade nella regola di
+     * default "tutto il resto richiede autenticazione", quindi risponde 401 anche per un file
+     * che esiste davvero su disco. L'unico modo di leggerlo resta MemberFileController, che
+     * controlla i permessi della cartella.
+     */
     @Test
     @Order(2)
+    void mediaFolderIsNeverServedAsAStaticResource() throws Exception {
+        String path = "/media/" + UUID.randomUUID() + ".pdf";
+        Path file = storageService.resolve(path);
+        Files.createDirectories(file.getParent());
+        Files.write(file, "%PDF-1.4\n%%EOF".getBytes(StandardCharsets.US_ASCII));
+
+        mockMvc.perform(get(path)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @Order(3)
     void unknownRoleIsRejected() throws Exception {
         mockMvc.perform(patch("/api/admin/media/folder/" + regiaId + "/permissions").with(asRole("ADMIN"))
                         .contentType("application/json")
@@ -141,7 +128,7 @@ class ArchiveApiTest {
     }
 
     @Test
-    @Order(3)
+    @Order(4)
     void memberCannotReachDocumentInFreeSubfolderOfStaffFolder() throws Exception {
         // Albero: "Regia" e tutto cio' che contiene spariscono; "Pubblica" resta.
         mockMvc.perform(get("/api/member/documents").with(asRole("MEMBER")))
@@ -157,7 +144,7 @@ class ArchiveApiTest {
     }
 
     @Test
-    @Order(4)
+    @Order(5)
     void staffSeesAndDownloadsDocumentInFreeSubfolder() throws Exception {
         mockMvc.perform(get("/api/member/documents").with(asRole("STAFF")))
                 .andExpect(status().isOk())
@@ -170,7 +157,7 @@ class ArchiveApiTest {
     }
 
     @Test
-    @Order(5)
+    @Order(6)
     void downloadHeaderSurvivesQuotesAndAccentsInFilename() throws Exception {
         String header = mockMvc.perform(get("/api/member/file/" + avvisoUuid).param("download", "true")
                         .with(asRole("MEMBER")))
@@ -183,7 +170,7 @@ class ArchiveApiTest {
     }
 
     @Test
-    @Order(6)
+    @Order(7)
     void oneAuditRowPerDownloadNotPerRangeRequest() throws Exception {
         long before = downloadRows();
 
@@ -206,17 +193,21 @@ class ArchiveApiTest {
     }
 
     @Test
-    @Order(7)
+    @Order(8)
     void deletingFolderTakesItsDocumentsAlong() throws Exception {
         mockMvc.perform(delete("/api/admin/media/folder/" + regiaId).with(asRole("ADMIN")))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/member/file/" + copioneUuid).with(asRole("STAFF")))
                 .andExpect(status().isNotFound());
+        // Il documento cancellato con la sua cartella (ON DELETE CASCADE, V011) non deve
+        // riapparire in radice: non si controlla la lunghezza assoluta di rootDocuments,
+        // che con un database condiviso fra classi di test puo' contenere anche documenti
+        // di altre classi (es. AdminApiTest ne aggancia uno senza cartella).
         mockMvc.perform(get("/api/admin/media/tree").with(asRole("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.folders.length()").value(1))
                 .andExpect(jsonPath("$.folders[0].name").value("Pubblica"))
-                .andExpect(jsonPath("$.rootDocuments.length()").value(0));
+                .andExpect(jsonPath("$.rootDocuments[?(@.uuid=='" + copioneUuid + "')]").isEmpty());
     }
 }

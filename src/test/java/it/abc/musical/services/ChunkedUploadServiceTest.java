@@ -12,20 +12,13 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
 import java.util.Arrays;
 
+import static it.abc.musical.TestFixtures.fakeJpegBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ChunkedUploadServiceTest {
 
     private ChunkedUploadService service;
-
-    private static byte[] fakeJpegBytes(int size) {
-        byte[] content = new byte[size];
-        content[0] = (byte) 0xFF;
-        content[1] = (byte) 0xD8;
-        content[2] = (byte) 0xFF;
-        return content;
-    }
 
     @BeforeEach
     void setUp(@TempDir Path tempDir) {

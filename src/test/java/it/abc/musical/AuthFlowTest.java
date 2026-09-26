@@ -10,18 +10,9 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.JavaMailSenderImpl;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -34,19 +25,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Flusso completo: registrazione → verifica email → form login → scambio sessione/JWT.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class AuthFlowTest {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine");
-
-    @Autowired
-    MockMvc mockMvc;
+class AuthFlowTest extends IntegrationTestBase {
 
     @Autowired
     UserRepository userRepository;
@@ -54,8 +34,8 @@ class AuthFlowTest {
     @Autowired
     TokenRepository tokenRepository;
 
-    @MockitoBean
-    JavaMailSender mailSender;
+    @Autowired
+    JwtDecoder jwtDecoder;
 
     private static final String EMAIL = "mario.rossi@example.com";
     private static final String PASSWORD = "Password1!";
@@ -125,12 +105,21 @@ class AuthFlowTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andReturn();
 
-        mockMvc.perform(post("/api/auth/token")
+        String tokenResponse = mockMvc.perform(post("/api/auth/token")
                         .session((org.springframework.mock.web.MockHttpSession) login.getRequest().getSession(false)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.expiresIn").value(3600));
+                .andExpect(jsonPath("$.expiresIn").value(3600))
+                .andReturn().getResponse().getContentAsString();
+
+        // Login con password: Spring Security aggiunge alle autorita' anche il marcatore
+        // FACTOR_PASSWORD (metodo di login usato), non un ruolo. AuthUtil.roles deve tenere
+        // solo le autorita' ROLE_*, altrimenti finisce nel claim roles del JWT come se fosse
+        // un ruolo vero (visto in sidebar admin dal frontend).
+        String accessToken = com.jayway.jsonpath.JsonPath.read(tokenResponse, "$.accessToken");
+        Jwt jwt = jwtDecoder.decode(accessToken);
+        assertThat(jwt.getClaimAsStringList("roles")).containsExactly("REGISTER");
     }
 
     @Test

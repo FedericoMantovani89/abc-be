@@ -55,7 +55,7 @@ class EventServicePosterCloneTest {
         storageService.init();
 
         service = new EventService(eventRepository, eventTypeRepository, showRepository,
-                storageService, fileValidationService);
+                storageService, fileValidationService, mock(AuditLogService.class));
         when(eventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 

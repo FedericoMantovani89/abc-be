@@ -59,8 +59,8 @@ class FileReplacementTest {
         eventRepository = mock(EventRepository.class);
         showRepository = mock(ShowRepository.class);
         eventService = new EventService(eventRepository, mock(EventTypeRepository.class), showRepository,
-                storageService, new FileValidationService());
-        showService = new ShowService(showRepository, storageService);
+                storageService, new FileValidationService(), mock(AuditLogService.class));
+        showService = new ShowService(showRepository, storageService, mock(AuditLogService.class));
         when(eventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(showRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }

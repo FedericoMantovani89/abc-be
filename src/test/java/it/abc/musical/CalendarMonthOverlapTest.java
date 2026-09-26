@@ -3,22 +3,8 @@ package it.abc.musical;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import static org.hamcrest.Matchers.contains;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -28,27 +14,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Lettura del mese: devono uscire tutti gli eventi che si sovrappongono al mese
  * (marzo 2027), non solo quelli che ci iniziano. Ordine per data di inizio.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class CalendarMonthOverlapTest {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine");
-
-    @Autowired
-    MockMvc mockMvc;
-
-    @MockitoBean
-    JavaMailSender mailSender;
-
-    private static RequestPostProcessor asRole(String role) {
-        return jwt().authorities(new SimpleGrantedAuthority("ROLE_" + role))
-                .jwt(j -> j.subject("test@abc.it"));
-    }
+class CalendarMonthOverlapTest extends IntegrationTestBase {
 
     private void event(String title, String start, String end, String targetRoles) throws Exception {
         String endJson = end == null ? "null" : "\"" + end + "\"";

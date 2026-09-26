@@ -1,25 +1,10 @@
 package it.abc.musical;
 
-import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -31,35 +16,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Calendario via MockMvc: la risposta viene serializzata davvero da Jackson fuori dalla
  * transazione (open-in-view: false), quindi una collection lazy non materializzata esplode qui.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class CalendarApiTest {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine");
-
-    @Autowired
-    MockMvc mockMvc;
-
-    @MockitoBean
-    JavaMailSender mailSender;
+class CalendarApiTest extends IntegrationTestBase {
 
     static Long showId;
     static Long eventId;
     static Long usedTypeId;
-
-    private static RequestPostProcessor asRole(String role) {
-        return jwt().authorities(new SimpleGrantedAuthority("ROLE_" + role))
-                .jwt(j -> j.subject("test@abc.it"));
-    }
-
-    private static Long id(String json) {
-        return ((Number) JsonPath.read(json, "$.id")).longValue();
-    }
 
     private Long createType(String name) throws Exception {
         return id(mockMvc.perform(post("/api/admin/calendar-event-types").with(asRole("ADMIN"))

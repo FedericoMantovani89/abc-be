@@ -1,64 +1,23 @@
 package it.abc.musical;
 
 import com.jayway.jsonpath.JsonPath;
-import jakarta.mail.internet.MimeMessage;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.UUID;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static it.abc.musical.TestFixtures.fakeJpegBytes;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class AdminUploadApiTest {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine");
-
-    @Autowired
-    MockMvc mockMvc;
-
-    @MockitoBean
-    JavaMailSender mailSender;
-
-    private static RequestPostProcessor asRole(String role) {
-        return jwt().authorities(new SimpleGrantedAuthority("ROLE_" + role))
-                .jwt(j -> j.subject("test@abc.it"));
-    }
-
-    private static byte[] fakeJpegBytes(int size) {
-        byte[] content = new byte[size];
-        content[0] = (byte) 0xFF;
-        content[1] = (byte) 0xD8;
-        content[2] = (byte) 0xFF;
-        return content;
-    }
+class AdminUploadApiTest extends IntegrationTestBase {
 
     @Test
     @Order(1)

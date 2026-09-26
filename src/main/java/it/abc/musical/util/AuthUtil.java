@@ -3,6 +3,7 @@ package it.abc.musical.util;
 import it.abc.musical.security.CustomUserDetails;
 import it.abc.musical.security.Roles;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
@@ -16,9 +17,17 @@ public final class AuthUtil {
     private AuthUtil() {
     }
 
+    /**
+     * Solo le autorita' che rappresentano davvero un ruolo (prefisso ROLE_). Spring Security
+     * aggiunge alle autorita' anche marcatori del metodo di login (es. FACTOR_PASSWORD dopo un
+     * login con password): senza questo filtro finivano nel claim roles del JWT come se fossero
+     * un ruolo in piu'.
+     */
     public static Set<String> roles(Authentication authentication) {
         return authentication.getAuthorities().stream()
-                .map(a -> a.getAuthority().replaceFirst("^ROLE_", ""))
+                .map(GrantedAuthority::getAuthority)
+                .filter(a -> a.startsWith("ROLE_"))
+                .map(a -> a.substring("ROLE_".length()))
                 .collect(Collectors.toSet());
     }
 
