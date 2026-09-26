@@ -17,7 +17,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Rate limiting sulle rotte di autenticazione: 20 richieste/ora per IP.
+ * Rate limiting sulle rotte di autenticazione: 20 richieste/ora per IP del visitatore
+ * (vedi {@link ClientIp}: il login arriva dal server Next, che inoltra l'IP in X-Forwarded-For).
  * Cache LRU in memoria (max 10.000 IP).
  */
 @Component
@@ -42,7 +43,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        Bucket bucket = buckets.computeIfAbsent(clientIp(request), ip -> Bucket.builder()
+        Bucket bucket = buckets.computeIfAbsent(ClientIp.of(request), ip -> Bucket.builder()
                 .addLimit(Bandwidth.builder()
                         .capacity(REQUESTS_PER_HOUR)
                         .refillGreedy(REQUESTS_PER_HOUR, Duration.ofHours(1))
@@ -56,13 +57,5 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getWriter().write("{\"error\": \"Too many requests. Riprova tra qualche minuto.\"}");
         }
-    }
-
-    private String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }

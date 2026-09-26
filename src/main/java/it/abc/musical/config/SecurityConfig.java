@@ -7,12 +7,12 @@ import it.abc.musical.security.CustomOidcUserService;
 import it.abc.musical.security.CustomUserDetailsService;
 import it.abc.musical.security.OAuth2AuthenticationSuccessHandler;
 import it.abc.musical.security.RateLimitingFilter;
+import it.abc.musical.security.Roles;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -34,7 +34,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+// I permessi stanno tutti nei requestMatchers: per usare @PreAuthorize va rimessa @EnableMethodSecurity.
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -60,16 +60,16 @@ public class SecurityConfig {
             .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/login/oauth2/code/*", "/oauth2/authorization/*").permitAll()
-                .requestMatchers("/images/**", "/posters/**", "/show_gallery/**", "/error").permitAll()
+                .requestMatchers("/posters/**", "/show_gallery/**", "/error").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/auth/token").authenticated()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
-                .requestMatchers("/actuator/**").hasAnyRole("ADMIN", "GOD")
-                .requestMatchers("/api/admin/users/**").hasAnyRole("ADMIN", "GOD")
-                .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "STAFF", "GOD")
+                .requestMatchers("/actuator/**").hasAnyRole(Roles.array(Roles.ADMINS))
+                .requestMatchers("/api/admin/users/**").hasAnyRole(Roles.array(Roles.ADMINS))
+                .requestMatchers("/api/admin/**").hasAnyRole(Roles.array(Roles.STAFF_AND_ABOVE))
                 .requestMatchers("/api/account/**").authenticated()
-                .requestMatchers("/api/member/**").hasAnyRole("MEMBER", "TECHNICIAN", "DIRECTOR", "STAFF", "ADMIN", "GOD")
+                .requestMatchers("/api/member/**").hasAnyRole(Roles.array(Roles.MEMBERS_AND_ABOVE))
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
