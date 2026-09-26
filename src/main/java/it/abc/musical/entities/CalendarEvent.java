@@ -42,16 +42,6 @@ public class CalendarEvent {
 
     private String venue;
 
-    @Column(name = "is_recurring", nullable = false)
-    private boolean recurring = false;
-
-    @Column(name = "recurrence_pattern", length = 100)
-    private String recurrencePattern;
-
-    /** Link loose a events.id se il tipo è "Spettacolo" (nessun vincolo FK). */
-    @Column(name = "public_event_id")
-    private Long publicEventId;
-
     /** Comma-separated, es. "DIRECTOR,STAFF"; null = visibile a tutti i soci. */
     @Column(name = "target_roles", columnDefinition = "text")
     private String targetRoles;

@@ -39,8 +39,7 @@ public final class CalendarDtos {
             CalendarEventTypeDto eventType,
             LocalDateTime startDatetime, LocalDateTime endDatetime,
             String location, String venue,
-            boolean isRecurring, String recurrencePattern,
-            Long publicEventId, String targetRoles,
+            String targetRoles,
             Long showId, String showTitle,
             Set<String> rehearsalRoles) {
 
@@ -50,8 +49,7 @@ public final class CalendarDtos {
                     e.getEventType() != null ? CalendarEventTypeDto.from(e.getEventType()) : null,
                     e.getStartDatetime(), e.getEndDatetime(),
                     e.getLocation(), e.getVenue(),
-                    e.isRecurring(), e.getRecurrencePattern(),
-                    e.getPublicEventId(), e.getTargetRoles(),
+                    e.getTargetRoles(),
                     e.getShow() != null ? e.getShow().getId() : null,
                     e.getShow() != null ? e.getShow().getTitle() : null,
                     copy(e.getRehearsalRoles()));
@@ -66,9 +64,6 @@ public final class CalendarDtos {
             LocalDateTime endDatetime,
             String location,
             String venue,
-            Boolean isRecurring,
-            String recurrencePattern,
-            Long publicEventId,
             String targetRoles,
             Long showId,
             Set<String> rehearsalRoles) {

@@ -8,6 +8,7 @@ import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.CommunicationRepository;
 import it.abc.musical.repositories.CommunicationTypeRepository;
 import it.abc.musical.util.AuthUtil;
+import it.abc.musical.util.RoleCsv;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -96,7 +97,7 @@ public class CommunicationService {
         communication.setPinned(Boolean.TRUE.equals(request.pinned()));
         communication.setPublishedAt(request.publishedAt());
         communication.setExpiresAt(request.expiresAt());
-        communication.setTargetRoles(request.targetRoles());
+        communication.setTargetRoles(RoleCsv.normalize(request.targetRoles()));
         communication.setUpdatedBy(userId);
     }
 }

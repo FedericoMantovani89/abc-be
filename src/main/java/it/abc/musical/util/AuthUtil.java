@@ -5,6 +5,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
+import java.util.Collection;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -35,20 +36,22 @@ public final class AuthUtil {
         return null;
     }
 
+    /** Ruoli che vedono comunque tutto (calendario, comunicazioni, archivio). */
+    private static final Set<String> SEE_ALL_ROLES = Set.of("ADMIN", "GOD");
+
     /** True se l'utente ha almeno uno dei ruoli nella stringa comma-separated (null/blank = tutti). */
     public static boolean matchesTargetRoles(String targetRoles, Set<String> userRoles) {
-        if (targetRoles == null || targetRoles.isBlank()) {
+        return matchesRoles(RoleCsv.parse(targetRoles), userRoles);
+    }
+
+    /** True se l'utente ha almeno uno dei ruoli ammessi; nessun ruolo ammesso = tutti. */
+    public static boolean matchesRoles(Collection<String> allowedRoles, Set<String> userRoles) {
+        if (allowedRoles == null || allowedRoles.isEmpty()) {
             return true;
         }
-        // ADMIN e GOD vedono comunque tutto.
-        if (userRoles.contains("ADMIN") || userRoles.contains("GOD")) {
+        if (userRoles.stream().anyMatch(SEE_ALL_ROLES::contains)) {
             return true;
         }
-        for (String target : targetRoles.split(",")) {
-            if (userRoles.contains(target.trim())) {
-                return true;
-            }
-        }
-        return false;
+        return allowedRoles.stream().anyMatch(userRoles::contains);
     }
 }

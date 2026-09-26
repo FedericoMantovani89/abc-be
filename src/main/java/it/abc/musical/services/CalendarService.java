@@ -13,6 +13,8 @@ import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.CalendarEventRepository;
 import it.abc.musical.repositories.CalendarEventTypeRepository;
 import it.abc.musical.repositories.ShowRepository;
+import it.abc.musical.util.AuthUtil;
+import it.abc.musical.util.RoleCsv;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,7 +52,7 @@ public class CalendarService {
         LocalDateTime to = ym.plusMonths(1).atDay(1).atStartOfDay();
         return calendarEventRepository.findActiveOverlapping(from, to).stream()
                 .filter(e -> userRoles == null
-                        || it.abc.musical.util.AuthUtil.matchesTargetRoles(e.getTargetRoles(), userRoles))
+                        || AuthUtil.matchesTargetRoles(e.getTargetRoles(), userRoles))
                 .map(CalendarEventDto::from)
                 .toList();
     }
@@ -172,10 +174,7 @@ public class CalendarService {
         event.setEndDatetime(request.endDatetime());
         event.setLocation(request.location());
         event.setVenue(request.venue());
-        event.setRecurring(Boolean.TRUE.equals(request.isRecurring()));
-        event.setRecurrencePattern(request.recurrencePattern());
-        event.setPublicEventId(request.publicEventId());
-        event.setTargetRoles(request.targetRoles());
+        event.setTargetRoles(RoleCsv.normalize(request.targetRoles()));
         // Spettacolo e ruoli convocati valgono solo per i tipi prova: sugli altri restano vuoti.
         event.setShow(show);
         event.setRehearsalRoles(rehearsalRoles);

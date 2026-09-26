@@ -275,4 +275,38 @@ class CalendarApiTest {
         mockMvc.perform(delete("/api/admin/calendar-event-types/1").with(asRole("MEMBER")))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @Order(13)
+    void targetRolesAreNormalizedAndRemovedFieldsAreGone() throws Exception {
+        mockMvc.perform(post("/api/admin/calendar-events").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("""
+                                {"title": "Riunione staff", "startDatetime": "2027-05-10T20:00:00",
+                                 "targetRoles": " staff, ,member,STAFF", "isRecurring": true}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.targetRoles").value("STAFF,MEMBER"))
+                .andExpect(jsonPath("$.isRecurring").doesNotExist())
+                .andExpect(jsonPath("$.recurrencePattern").doesNotExist())
+                .andExpect(jsonPath("$.publicEventId").doesNotExist());
+
+        mockMvc.perform(post("/api/admin/calendar-events").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("""
+                                {"title": "Per tutti", "startDatetime": "2027-05-11T20:00:00", "targetRoles": " , "}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.targetRoles").doesNotExist());
+
+        // Il socio MEMBER vede la riunione (MEMBER e' tra i ruoli), come chi ha "Per tutti".
+        mockMvc.perform(get("/api/member/calendar").param("year", "2027").param("month", "5")
+                        .with(asRole("MEMBER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+        mockMvc.perform(get("/api/member/calendar").param("year", "2027").param("month", "5")
+                        .with(asRole("TECHNICIAN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
 }
