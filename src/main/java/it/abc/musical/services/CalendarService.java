@@ -88,7 +88,7 @@ public class CalendarService {
     @Transactional
     public void softDelete(Long id) {
         CalendarEvent event = activeEvent(id);
-        event.setDeletedAt(LocalDateTime.now());
+        event.markDeleted();
         calendarEventRepository.save(event);
         auditLogService.record("DELETE", "CalendarEvent", id);
     }

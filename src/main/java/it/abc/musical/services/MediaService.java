@@ -21,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -168,7 +167,7 @@ public class MediaService {
     public void deleteDocument(Long id) {
         Document document = documentRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new NotFoundException("File non trovato"));
-        document.setDeletedAt(LocalDateTime.now());
+        document.markDeleted();
         documentRepository.save(document);
         auditLogService.record("DELETE", "Document", id);
     }
@@ -199,10 +198,10 @@ public class MediaService {
             deleteRecursively(child);
         }
         for (Document document : documentRepository.findByFolderIdAndDeletedAtIsNull(folder.getId())) {
-            document.setDeletedAt(LocalDateTime.now());
+            document.markDeleted();
             documentRepository.save(document);
         }
-        folder.setDeletedAt(LocalDateTime.now());
+        folder.markDeleted();
         folderRepository.save(folder);
     }
 

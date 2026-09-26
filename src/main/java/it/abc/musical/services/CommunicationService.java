@@ -71,7 +71,7 @@ public class CommunicationService {
     @Transactional
     public void softDelete(Long id) {
         Communication communication = active(id);
-        communication.setDeletedAt(LocalDateTime.now());
+        communication.markDeleted();
         communicationRepository.save(communication);
         auditLogService.record("DELETE", "Communication", id);
     }
