@@ -6,6 +6,7 @@ import it.abc.musical.services.StorageService;
 import it.abc.musical.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -39,32 +40,36 @@ public class MemberFileController {
     private final MediaService mediaService;
     private final StorageService storageService;
 
-    @GetMapping("/{uuid}")
-    public ResponseEntity<?> file(@PathVariable UUID uuid,
-                                  @RequestHeader(value = HttpHeaders.RANGE, required = false) String rangeHeader,
-                                  @RequestParam(defaultValue = "false") boolean download,
-                                  Authentication authentication) {
+    /** File intero (visualizzazione o, con download=true, scaricamento). */
+    @GetMapping(value = "/{uuid}", headers = "!" + HttpHeaders.RANGE)
+    public ResponseEntity<Resource> file(@PathVariable UUID uuid,
+                                         @RequestParam(defaultValue = "false") boolean download,
+                                         Authentication authentication) {
+        Document document = mediaService.byUuidForRoles(uuid, AuthUtil.roles(authentication));
+        mediaService.recordDownload(document.getId());
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
+                .contentType(mediaTypeOf(document))
+                .header(HttpHeaders.ACCEPT_RANGES, "bytes");
+        if (download) {
+            // Il nome viene dal client: ContentDisposition lo mette tra virgolette con escape e
+            // aggiunge filename* (RFC 5987), cosi' virgolette, accenti o a capo non rompono l'intestazione.
+            builder.header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                    .filename(document.getFileName(), StandardCharsets.UTF_8)
+                    .build().toString());
+        }
+        return builder.body(new FileSystemResource(storageService.resolve(document.getFilePath())));
+    }
+
+    /**
+     * Un pezzo del file (seek di audio/video). Metodo a parte con il tipo dichiarato: con un
+     * ResponseEntity<?> Spring non trova il convertitore per ResourceRegion e risponde 500.
+     */
+    @GetMapping(value = "/{uuid}", headers = HttpHeaders.RANGE)
+    public ResponseEntity<ResourceRegion> range(@PathVariable UUID uuid,
+                                                @RequestHeader(HttpHeaders.RANGE) String rangeHeader,
+                                                Authentication authentication) {
         Document document = mediaService.byUuidForRoles(uuid, AuthUtil.roles(authentication));
         FileSystemResource resource = new FileSystemResource(storageService.resolve(document.getFilePath()));
-        MediaType mediaType = document.getMimeType() != null
-                ? MediaType.parseMediaType(document.getMimeType())
-                : MediaType.APPLICATION_OCTET_STREAM;
-
-        if (rangeHeader == null) {
-            mediaService.recordDownload(document.getId());
-            ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
-                    .contentType(mediaType)
-                    .header(HttpHeaders.ACCEPT_RANGES, "bytes");
-            if (download) {
-                // Il nome viene dal client: ContentDisposition lo mette tra virgolette con escape e
-                // aggiunge filename* (RFC 5987), cosi' virgolette, accenti o a capo non rompono l'intestazione.
-                builder.header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
-                        .filename(document.getFileName(), StandardCharsets.UTF_8)
-                        .build().toString());
-            }
-            return builder.body(resource);
-        }
-
         List<HttpRange> ranges = HttpRange.parseRanges(rangeHeader);
         long contentLength = resource.getFile().length();
         HttpRange range = ranges.get(0);
@@ -78,8 +83,14 @@ public class MemberFileController {
         }
 
         return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
-                .contentType(mediaType)
+                .contentType(mediaTypeOf(document))
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                 .body(new ResourceRegion(resource, start, rangeLength));
+    }
+
+    private static MediaType mediaTypeOf(Document document) {
+        return document.getMimeType() != null
+                ? MediaType.parseMediaType(document.getMimeType())
+                : MediaType.APPLICATION_OCTET_STREAM;
     }
 }
