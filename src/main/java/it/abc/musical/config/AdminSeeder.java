@@ -4,6 +4,8 @@ import it.abc.musical.entities.Role;
 import it.abc.musical.entities.User;
 import it.abc.musical.repositories.RoleRepository;
 import it.abc.musical.repositories.UserRepository;
+import it.abc.musical.security.Roles;
+import it.abc.musical.util.EmailAddresses;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,11 +45,11 @@ public class AdminSeeder implements ApplicationRunner {
         if (userRepository.existsByEmailIgnoreCase(adminEmail)) {
             return;
         }
-        Role adminRole = roleRepository.findByName("ADMIN")
+        Role adminRole = roleRepository.findByName(Roles.ADMIN)
                 .orElseThrow(() -> new IllegalStateException("Ruolo ADMIN mancante"));
 
         User admin = new User();
-        admin.setEmail(adminEmail.toLowerCase());
+        admin.setEmail(EmailAddresses.normalize(adminEmail));
         admin.setPassword(passwordEncoder.encode(adminPassword));
         admin.setFirstName("Admin");
         admin.setLastName("ABC");

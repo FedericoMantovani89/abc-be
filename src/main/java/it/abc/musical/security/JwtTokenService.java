@@ -1,6 +1,7 @@
 package it.abc.musical.security;
 
 import it.abc.musical.entities.User;
+import it.abc.musical.util.AuthUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -13,7 +14,6 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 public class JwtTokenService {
@@ -29,9 +29,7 @@ public class JwtTokenService {
     }
 
     public String generateToken(Authentication authentication, long expirationSeconds) {
-        Set<String> roles = authentication.getAuthorities().stream()
-                .map(a -> a.getAuthority().replaceFirst("^ROLE_", ""))
-                .collect(Collectors.toSet());
+        Set<String> roles = AuthUtil.roles(authentication);
         Long userId = null;
         String firstName = null;
         if (authentication.getPrincipal() instanceof CustomUserDetails ud) {

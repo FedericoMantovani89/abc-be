@@ -2,6 +2,7 @@ package it.abc.musical.services;
 
 import it.abc.musical.entities.AuditLog;
 import it.abc.musical.repositories.AuditLogRepository;
+import it.abc.musical.security.ClientIp;
 import it.abc.musical.util.AuthUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -41,8 +42,9 @@ public class AuditLogService {
             }
             if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs) {
                 HttpServletRequest request = attrs.getRequest();
-                String forwarded = request.getHeader("X-Forwarded-For");
-                entry.setIpAddress(forwarded != null ? forwarded.split(",")[0].trim() : request.getRemoteAddr());
+                String ip = ClientIp.of(request);
+                // La colonna e' di 45 caratteri (IPv6): un'intestazione anomala non deve far fallire la riga.
+                entry.setIpAddress(ip != null && ip.length() > 45 ? ip.substring(0, 45) : ip);
                 entry.setUserAgent(request.getHeader("User-Agent"));
             }
             auditLogRepository.save(entry);

@@ -1,13 +1,13 @@
 package it.abc.musical.services;
 
 import it.abc.musical.dto.AuthDtos.RegisterRequest;
-import it.abc.musical.entities.Role;
 import it.abc.musical.entities.Token;
 import it.abc.musical.entities.User;
 import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.exceptions.ConflictException;
-import it.abc.musical.repositories.RoleRepository;
 import it.abc.musical.repositories.UserRepository;
+import it.abc.musical.security.NewUserRole;
+import it.abc.musical.util.EmailAddresses;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,28 +18,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
+    private final NewUserRole newUserRole;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final EmailService emailService;
 
     @Transactional
     public User register(RegisterRequest request) {
-        String email = request.email().toLowerCase().trim();
+        String email = EmailAddresses.normalize(request.email());
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new ConflictException("Email già registrata");
         }
-        // I nuovi iscritti nascono come REGISTER: un admin li promuove a MEMBER
-        // per sbloccare l'area riservata ai soci.
-        Role registerRole = roleRepository.findByName("REGISTER")
-                .orElseThrow(() -> new IllegalStateException("Ruolo REGISTER mancante"));
-
         User user = new User();
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setFirstName(request.firstName().trim());
         user.setLastName(request.lastName().trim());
-        user.setRole(registerRole);
+        user.setRole(newUserRole.get());
         user.setActive(true);
         user.setVerified(false);
         user = userRepository.save(user);
@@ -59,7 +54,7 @@ public class UserService {
 
     @Transactional
     public void resendVerification(String email) {
-        userRepository.findByEmailIgnoreCase(email)
+        userRepository.findByEmailIgnoreCase(EmailAddresses.normalize(email))
                 .filter(u -> !u.isVerified())
                 .ifPresent(user -> {
                     Token token = tokenService.createToken(user, Token.TYPE_EMAIL_VERIFICATION);
@@ -70,7 +65,7 @@ public class UserService {
 
     @Transactional
     public void forgotPassword(String email) {
-        userRepository.findByEmailIgnoreCase(email)
+        userRepository.findByEmailIgnoreCase(EmailAddresses.normalize(email))
                 .filter(User::isActive)
                 .ifPresent(user -> {
                     Token token = tokenService.createToken(user, Token.TYPE_PASSWORD_RESET);

@@ -9,6 +9,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
 
 @Slf4j
 @Service
@@ -39,7 +40,7 @@ public class EmailService {
                   <p style="color:#666; font-size:13px;">Se il pulsante non funziona, copia questo link nel browser:<br>%s</p>
                   <p style="color:#666; font-size:13px;">Il link scade tra 24 ore. Se non ti sei registrato tu, ignora questa email.</p>
                 </div>
-                """.formatted(firstName != null ? ", " + firstName : "", link, link);
+                """.formatted(firstName != null ? ", " + HtmlUtils.htmlEscape(firstName) : "", link, link);
         send(toEmail, "Verifica il tuo account — ABC Musical Company", html);
     }
 
@@ -57,7 +58,7 @@ public class EmailService {
                   <p style="color:#666; font-size:13px;">Se il pulsante non funziona, copia questo link nel browser:<br>%s</p>
                   <p style="color:#666; font-size:13px;">Il link scade tra 1 ora. Se non hai richiesto tu il reset, ignora questa email.</p>
                 </div>
-                """.formatted(firstName != null ? " " + firstName : "", link, link);
+                """.formatted(firstName != null ? " " + HtmlUtils.htmlEscape(firstName) : "", link, link);
         send(toEmail, "Reimposta la tua password — ABC Musical Company", html);
     }
 

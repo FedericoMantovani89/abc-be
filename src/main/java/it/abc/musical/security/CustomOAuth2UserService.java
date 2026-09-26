@@ -32,8 +32,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 oauth2User.getName(),          // id Facebook
                 oauth2User.getAttribute("email"),
                 firstName,
-                lastName,
-                null);
+                lastName);
         return oauth2User;
     }
 }

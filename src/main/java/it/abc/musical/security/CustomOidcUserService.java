@@ -22,8 +22,7 @@ public class CustomOidcUserService extends OidcUserService {
                 oidcUser.getSubject(),
                 oidcUser.getEmail(),
                 oidcUser.getGivenName(),
-                oidcUser.getFamilyName(),
-                oidcUser.getPicture());
+                oidcUser.getFamilyName());
         return oidcUser;
     }
 }

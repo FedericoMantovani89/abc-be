@@ -36,7 +36,10 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     ports:
-      - "8080:8080"   # serve per i redirect OAuth2 e per lo sviluppo ibrido
+      # Solo da questa macchina: da fuori il backend si raggiunge via Caddy -> Next
+      # (rewrite /api, /oauth2, /login/oauth2), cosi' X-Forwarded-For non si puo' falsificare.
+      # I redirect OAuth2 usano APP_BASE_URL (dominio pubblico), non questa porta.
+      - "127.0.0.1:8080:8080"
     volumes:
       - abc_uploads:/var/data/uploads
     healthcheck:

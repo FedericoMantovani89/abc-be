@@ -8,6 +8,7 @@ import it.abc.musical.exceptions.ConflictException;
 import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.RoleRepository;
 import it.abc.musical.repositories.UserRepository;
+import it.abc.musical.security.Roles;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,7 +42,7 @@ public class AdminUserService {
     @Transactional
     public UserAdminDto setRole(Long id, String roleName) {
         User user = requireTouchable(id);
-        if ("GOD".equalsIgnoreCase(roleName)) {
+        if (Roles.GOD.equalsIgnoreCase(roleName)) {
             throw new BadRequestException("Il ruolo GOD non è assegnabile");
         }
         Role role = roleRepository.findByName(roleName.toUpperCase())
@@ -56,7 +57,7 @@ public class AdminUserService {
     private User requireTouchable(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Utente non trovato"));
-        if ("GOD".equals(user.getRole().getName())) {
+        if (Roles.GOD.equals(user.getRole().getName())) {
             throw new ConflictException("L'account tecnico non è modificabile");
         }
         return user;
