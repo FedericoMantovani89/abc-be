@@ -44,6 +44,16 @@ public class ChunkedUploadService {
 
     private final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
 
+    private record Completed(String originalFilename, Instant completedAt) {
+    }
+
+    /**
+     * Nome originale dei file completati, per percorso salvato: all'aggancio (MediaService) il nome
+     * che vale e' quello dichiarato all'avvio del caricamento e controllato qui, non quello che il
+     * client rimanda dopo. Stessa durata delle sessioni.
+     */
+    private final Map<String, Completed> completed = new ConcurrentHashMap<>();
+
     public ChunkedUploadService(StorageService storageService,
                                  FileValidationService fileValidationService,
                                  @Value("${app.upload.chunk-size-mb:8}") int chunkSizeMb,
@@ -109,9 +119,22 @@ public class ChunkedUploadService {
         String mimeType = fileValidationService.validate(adapted, session.targetType());
         String path = storageService.store(adapted, session.targetType());
 
+        completed.put(path, new Completed(session.originalFilename(), Instant.now()));
         sessions.remove(uploadId);
         storageService.deleteQuietly(session.tempFile());
         return new CompleteUploadResponse(path, mimeType, session.totalSize(), session.originalFilename());
+    }
+
+    /**
+     * Nome originale registrato per un file completato da questo servizio. Un percorso che non
+     * viene da un caricamento completato (o scaduto, o di prima di un riavvio) non si aggancia.
+     */
+    public String originalFilenameOf(String path) {
+        Completed upload = completed.get(path);
+        if (upload == null) {
+            throw new BadRequestException("Caricamento non trovato o scaduto: carica di nuovo il file.");
+        }
+        return upload.originalFilename();
     }
 
     public void cancel(UUID uploadId) {
@@ -131,6 +154,7 @@ public class ChunkedUploadService {
             }
             return expired;
         });
+        completed.values().removeIf(upload -> upload.completedAt().isBefore(cutoff));
         cleanupOrphanedTempFiles(cutoff);
     }
 

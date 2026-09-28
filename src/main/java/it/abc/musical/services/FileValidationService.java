@@ -4,6 +4,8 @@ import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.util.FileTypeUtil;
 import it.abc.musical.util.FileTypeUtil.Category;
+import it.abc.musical.util.PdfContentRules;
+import it.abc.musical.util.ZipContentRules;
 import org.apache.tika.Tika;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
@@ -13,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -98,7 +101,44 @@ public class FileValidationService {
             throw new BadRequestException(
                     "Il contenuto del file non corrisponde all'estensione ." + extension);
         }
+        if ("zip".equals(extension)) {
+            checkZip(file);
+        } else if ("pdf".equals(extension)) {
+            checkPdf(file);
+        }
         return detectedMime;
+    }
+
+    private void checkPdf(MultipartFile file) {
+        byte[] content;
+        try {
+            content = file.getBytes();
+        } catch (IOException e) {
+            throw new BadRequestException("File illeggibile");
+        }
+        PdfContentRules.check(content);
+    }
+
+    /** ZipFile vuole un file su disco: copia temporanea (i documenti pesano al massimo 10 MB). */
+    private void checkZip(MultipartFile file) {
+        Path copy = null;
+        try {
+            copy = Files.createTempFile("abc-verifica-", ".zip");
+            try (InputStream in = file.getInputStream()) {
+                Files.copy(in, copy, StandardCopyOption.REPLACE_EXISTING);
+            }
+            ZipContentRules.check(copy);
+        } catch (IOException e) {
+            throw new BadRequestException("File illeggibile");
+        } finally {
+            if (copy != null) {
+                try {
+                    Files.deleteIfExists(copy);
+                } catch (IOException ignored) {
+                    // copia temporanea: la ripulisce il sistema
+                }
+            }
+        }
     }
 
     /** Rileva il MIME reale di un file già presente su disco, con la stessa regola di validate(). */

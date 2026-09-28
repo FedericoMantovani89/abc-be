@@ -1,15 +1,9 @@
 package it.abc.musical;
 
 import com.jayway.jsonpath.JsonPath;
-import it.abc.musical.services.StorageService;
+import it.abc.musical.enums.UploadTargetType;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
-
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -20,9 +14,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 4xx appropriato, con un messaggio generico (mai il testo SQL o lo stack trace nella risposta).
  */
 class ClientErrorApiTest extends IntegrationTestBase {
-
-    @Autowired
-    StorageService storageService;
 
     @Test
     void unreadableJsonBodyIsABadRequestNotAServerError() throws Exception {
@@ -67,10 +58,7 @@ class ClientErrorApiTest extends IntegrationTestBase {
                 .andReturn().getResponse().getContentAsString();
         Long folderId = ((Number) JsonPath.read(folderJson, "$.id")).longValue();
 
-        String path = "/media/" + UUID.randomUUID() + ".pdf";
-        Path file = storageService.resolve(path);
-        Files.createDirectories(file.getParent());
-        Files.write(file, "%PDF-1.4\n%%EOF".getBytes(StandardCharsets.US_ASCII));
+        String path = upload(UploadTargetType.MEDIA_DOCUMENT, "prova.pdf", TestPdfs.clean());
         String documentJson = mockMvc.perform(post("/api/admin/media").with(asRole("ADMIN"))
                         .contentType("application/json")
                         .content("""

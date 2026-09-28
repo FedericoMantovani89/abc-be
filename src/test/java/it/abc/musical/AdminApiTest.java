@@ -1,5 +1,6 @@
 package it.abc.musical;
 
+import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.services.StorageService;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -110,22 +111,39 @@ class AdminApiTest extends IntegrationTestBase {
     @Test
     @Order(7)
     void attachDocumentFromUploadedPath() throws Exception {
-        Path mediaFile = storageService.resolve("/media/550e8400-e29b-41d4-a716-446655440002.pdf");
-        Files.createDirectories(mediaFile.getParent());
-        Files.write(mediaFile, "%PDF-1.4\n%%EOF".getBytes());
+        String path = upload(UploadTargetType.MEDIA_DOCUMENT, "regolamento.pdf", TestPdfs.clean());
 
-        // mimeType/fileSizeBytes sono facoltativi e ignorati: il server li ri-deriva dal
-        // file su disco (vedi asserzione su $.mimeType sotto, che verifica proprio questa provenienza).
+        // originalFilename/mimeType/fileSizeBytes sono ignorati: il nome viene dalla sessione di
+        // caricamento, MIME e dimensione dal file su disco. Un client che manda un altro nome
+        // (qui un .exe) non cambia cio' che viene salvato.
         mockMvc.perform(post("/api/admin/media").with(asRole("ADMIN"))
                         .contentType("application/json")
                         .content("""
-                                {"filePath": "/media/550e8400-e29b-41d4-a716-446655440002.pdf", "originalFilename": "regolamento.pdf",
+                                {"filePath": "%s", "originalFilename": "falso.exe",
                                  "mimeType": "application/octet-stream", "fileSizeBytes": 1,
                                  "folderId": null}
-                                """))
+                                """.formatted(path)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.fileName").value("regolamento.pdf"))
+                .andExpect(jsonPath("$.title").value("regolamento.pdf"))
                 .andExpect(jsonPath("$.mimeType").value("application/pdf"));
+    }
+
+    @Test
+    @Order(7)
+    void attachingAFileThatDidNotComeFromAnUploadIsRejected() throws Exception {
+        Path mediaFile = storageService.resolve("/media/550e8400-e29b-41d4-a716-446655440002.pdf");
+        Files.createDirectories(mediaFile.getParent());
+        Files.write(mediaFile, TestPdfs.clean());
+
+        mockMvc.perform(post("/api/admin/media").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("""
+                                {"filePath": "/media/550e8400-e29b-41d4-a716-446655440002.pdf",
+                                 "originalFilename": "regolamento.pdf"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Caricamento non trovato o scaduto: carica di nuovo il file."));
     }
 
     /**

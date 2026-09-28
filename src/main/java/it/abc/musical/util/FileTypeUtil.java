@@ -7,7 +7,12 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-/** Mappatura estensione → categoria, MIME attesi e tipo media. */
+/**
+ * Mappatura estensione → categoria, MIME attesi e tipo media, solo per i NUOVI caricamenti.
+ * .doc, .xls e .rar non si caricano piu' (macro dei vecchi Office, archivi non ispezionabili):
+ * i documenti gia' in archivio con quelle estensioni restano scaricabili, perche' il download
+ * usa il MIME salvato e non passa da qui.
+ */
 public final class FileTypeUtil {
 
     public enum Category {
@@ -22,12 +27,9 @@ public final class FileTypeUtil {
             Map.entry("wav", Category.AUDIO),
             Map.entry("mp4", Category.VIDEO),
             Map.entry("pdf", Category.DOCUMENT),
-            Map.entry("doc", Category.DOCUMENT),
             Map.entry("docx", Category.DOCUMENT),
-            Map.entry("xls", Category.DOCUMENT),
             Map.entry("xlsx", Category.DOCUMENT),
-            Map.entry("zip", Category.DOCUMENT),
-            Map.entry("rar", Category.DOCUMENT));
+            Map.entry("zip", Category.DOCUMENT));
 
     private static final Map<String, Set<String>> EXPECTED_MIMES = Map.ofEntries(
             Map.entry("jpg", Set.of("image/jpeg")),
@@ -37,16 +39,13 @@ public final class FileTypeUtil {
             Map.entry("wav", Set.of("audio/vnd.wave", "audio/x-wav", "audio/wav")),
             Map.entry("mp4", Set.of("video/mp4", "video/quicktime", "application/mp4")),
             Map.entry("pdf", Set.of("application/pdf")),
-            Map.entry("doc", Set.of("application/msword", "application/x-tika-msoffice")),
             Map.entry("docx", Set.of(
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     "application/x-tika-ooxml", "application/zip")),
-            Map.entry("xls", Set.of("application/vnd.ms-excel", "application/x-tika-msoffice")),
             Map.entry("xlsx", Set.of(
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     "application/x-tika-ooxml", "application/zip")),
-            Map.entry("zip", Set.of("application/zip", "application/x-tika-ooxml")),
-            Map.entry("rar", Set.of("application/x-rar-compressed", "application/x-rar")));
+            Map.entry("zip", Set.of("application/zip", "application/x-tika-ooxml")));
 
     /** Nome della categoria in italiano leggibile, plurale, per i messaggi utente. */
     private static final Map<Category, String> CATEGORY_LABELS_IT = Map.of(

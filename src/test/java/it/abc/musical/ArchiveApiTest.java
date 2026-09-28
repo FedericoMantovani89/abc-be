@@ -1,6 +1,7 @@
 package it.abc.musical;
 
 import com.jayway.jsonpath.JsonPath;
+import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.repositories.AuditLogRepository;
 import it.abc.musical.services.StorageService;
 import org.junit.jupiter.api.MethodOrderer;
@@ -58,10 +59,7 @@ class ArchiveApiTest extends IntegrationTestBase {
     }
 
     private String attachPdf(Long folderId, String originalFilename) throws Exception {
-        String path = "/media/" + UUID.randomUUID() + ".pdf";
-        Path file = storageService.resolve(path);
-        Files.createDirectories(file.getParent());
-        Files.write(file, "%PDF-1.4\n%%EOF".getBytes(StandardCharsets.US_ASCII));
+        String path = upload(UploadTargetType.MEDIA_DOCUMENT, originalFilename, TestPdfs.clean());
         String json = mockMvc.perform(post("/api/admin/media").with(asRole("ADMIN"))
                         .contentType("application/json")
                         .content("""

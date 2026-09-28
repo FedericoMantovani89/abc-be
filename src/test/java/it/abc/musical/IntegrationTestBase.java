@@ -1,6 +1,7 @@
 package it.abc.musical;
 
 import com.jayway.jsonpath.JsonPath;
+import it.abc.musical.enums.UploadTargetType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -15,6 +16,9 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Base dei test di integrazione che avviano il context Spring contro un Postgres vero.
@@ -55,6 +59,28 @@ public abstract class IntegrationTestBase {
     protected static RequestPostProcessor asRole(String role) {
         return jwt().authorities(new SimpleGrantedAuthority("ROLE_" + role))
                 .jwt(j -> j.subject("test@abc.it"));
+    }
+
+    /**
+     * Carica un file col flusso vero a pezzi (avvio, un pezzo, chiusura) e restituisce il percorso
+     * salvato: e' l'unico modo di ottenere un percorso che POST /api/admin/media accetta.
+     */
+    protected String upload(UploadTargetType target, String filename, byte[] content) throws Exception {
+        String escaped = filename.replace("\\", "\\\\").replace("\"", "\\\"");
+        String init = mockMvc.perform(post("/api/admin/uploads").with(asRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("{\"targetType\": \"%s\", \"filename\": \"%s\", \"totalSize\": %d}"
+                                .formatted(target, escaped, content.length)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String uploadId = JsonPath.read(init, "$.uploadId");
+        mockMvc.perform(put("/api/admin/uploads/" + uploadId + "/chunks/0").with(asRole("ADMIN"))
+                        .contentType("application/octet-stream").content(content))
+                .andExpect(status().isNoContent());
+        String completed = mockMvc.perform(post("/api/admin/uploads/" + uploadId + "/complete").with(asRole("ADMIN")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(completed, "$.path");
     }
 
     protected static Long id(String json) {
