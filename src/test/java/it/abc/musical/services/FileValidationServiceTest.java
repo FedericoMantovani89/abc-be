@@ -2,7 +2,11 @@ package it.abc.musical.services;
 
 import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.exceptions.BadRequestException;
+import it.abc.musical.enums.MediaFileType;
+import it.abc.musical.util.FileTypeUtil;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.charset.StandardCharsets;
@@ -41,6 +45,24 @@ class FileValidationServiceTest {
         assertThatThrownBy(() -> service.validate(file, UploadTargetType.MEDIA_DOCUMENT))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("non consentito");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"verbale.doc", "bilancio.xls", "costumi.rar"})
+    void oldOfficeAndRarAreNoLongerAccepted(String filename) {
+        var file = new MockMultipartFile("file", filename, "application/octet-stream", new byte[]{1, 2, 3});
+
+        assertThatThrownBy(() -> service.validate(file, UploadTargetType.MEDIA_DOCUMENT))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageStartingWith("Tipo di file ." + filename.substring(filename.lastIndexOf('.') + 1)
+                        + " non consentito")
+                .hasMessageNotContaining(".doc,")
+                .hasMessageContaining(".docx");
+    }
+
+    @Test
+    void documentsAlreadyStoredAsDocKeepTheirMediaType() {
+        assertThat(FileTypeUtil.mediaTypeOf("doc")).isEqualTo(MediaFileType.DOCUMENT);
     }
 
     @Test
