@@ -1,6 +1,7 @@
 package it.abc.musical;
 
 import com.jayway.jsonpath.JsonPath;
+import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.repositories.AuditLogRepository;
 import it.abc.musical.services.StorageService;
 import org.junit.jupiter.api.AfterEach;
@@ -8,9 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
@@ -66,10 +64,7 @@ class MediaMoveApiTest extends IntegrationTestBase {
     }
 
     private Long attachPdf(Long folderId) throws Exception {
-        String path = "/media/" + UUID.randomUUID() + ".pdf";
-        Path file = storageService.resolve(path);
-        Files.createDirectories(file.getParent());
-        Files.write(file, "%PDF-1.4\n%%EOF".getBytes(StandardCharsets.US_ASCII));
+        String path = upload(UploadTargetType.MEDIA_DOCUMENT, "copione.pdf", TestPdfs.clean());
         String json = mockMvc.perform(post("/api/admin/media").with(asRole("ADMIN"))
                         .contentType("application/json")
                         .content("""
