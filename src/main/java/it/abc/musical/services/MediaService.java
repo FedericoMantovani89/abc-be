@@ -189,6 +189,17 @@ public class MediaService {
         return DocumentDto.from(document);
     }
 
+    /** Cambia il titolo mostrato; il file (nome, percorso, estensione) resta com'e'. */
+    @Transactional
+    public DocumentDto renameDocument(Long id, String title) {
+        Document document = documentRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new NotFoundException("File non trovato"));
+        document.setTitle(title.trim());
+        document = documentRepository.save(document);
+        auditLogService.record("RENAME", "Document", id);
+        return DocumentDto.from(document);
+    }
+
     // ------------------------------------------------------------------ cartelle
 
     @Transactional
@@ -240,6 +251,18 @@ public class MediaService {
         folder.setParentFolder(parent);
         folder = saveFolder(folder);
         auditLogService.record("MOVE", "Folder", id);
+        return FolderNodeDto.of(folder);
+    }
+
+    /** Rinomina la cartella nello stesso padre; cambiare solo le maiuscole e' ammesso. */
+    @Transactional
+    public FolderNodeDto renameFolder(Long id, String name) {
+        Folder folder = activeFolder(id);
+        String trimmed = name.trim();
+        requireFreeName(trimmed, folder.getParentFolder(), folder.getId());
+        folder.setName(trimmed);
+        folder = saveFolder(folder);
+        auditLogService.record("RENAME", "Folder", id);
         return FolderNodeDto.of(folder);
     }
 

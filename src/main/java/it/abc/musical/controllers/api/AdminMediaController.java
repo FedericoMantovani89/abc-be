@@ -3,11 +3,13 @@ package it.abc.musical.controllers.api;
 import it.abc.musical.dto.MediaDtos.DocumentAttachRequest;
 import it.abc.musical.dto.MediaDtos.DocumentDto;
 import it.abc.musical.dto.MediaDtos.DocumentMoveRequest;
+import it.abc.musical.dto.MediaDtos.DocumentRenameRequest;
 import it.abc.musical.dto.MediaDtos.FolderCreateRequest;
 import it.abc.musical.dto.MediaDtos.FolderMoveRequest;
 import it.abc.musical.dto.MediaDtos.FolderNodeDto;
 import it.abc.musical.dto.MediaDtos.FolderPermissionsDto;
 import it.abc.musical.dto.MediaDtos.FolderPermissionsRequest;
+import it.abc.musical.dto.MediaDtos.FolderRenameRequest;
 import it.abc.musical.dto.MediaDtos.MediaTreeDto;
 import it.abc.musical.services.MediaService;
 import it.abc.musical.services.MediaService.EnsuredFolder;
@@ -50,6 +52,11 @@ public class AdminMediaController {
         return mediaService.moveDocument(id, request.folderId());
     }
 
+    @PatchMapping("/{id}")
+    public DocumentDto renameDocument(@PathVariable Long id, @Valid @RequestBody DocumentRenameRequest request) {
+        return mediaService.renameDocument(id, request.title());
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteDocument(@PathVariable Long id) {
         mediaService.deleteDocument(id);
@@ -77,6 +84,11 @@ public class AdminMediaController {
     @PatchMapping("/folder/{id}/move")
     public FolderNodeDto moveFolder(@PathVariable Long id, @RequestBody FolderMoveRequest request) {
         return mediaService.moveFolder(id, request.parentFolderId());
+    }
+
+    @PatchMapping("/folder/{id}")
+    public FolderNodeDto renameFolder(@PathVariable Long id, @Valid @RequestBody FolderRenameRequest request) {
+        return mediaService.renameFolder(id, request.name());
     }
 
     @DeleteMapping("/folder/{id}")
