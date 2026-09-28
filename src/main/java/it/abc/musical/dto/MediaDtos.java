@@ -31,12 +31,13 @@ public final class MediaDtos {
     }
 
     /**
-     * Aggancio di un file caricato a pezzi. mimeType e fileSizeBytes sono facoltativi e ignorati:
-     * il server li ricava dal file su disco (restano per non rompere chi li manda).
+     * Aggancio di un file caricato a pezzi. originalFilename, mimeType e fileSizeBytes sono
+     * facoltativi e ignorati: il nome viene dalla sessione di caricamento, MIME e dimensione dal
+     * file su disco (restano per non rompere chi li manda).
      */
     public record DocumentAttachRequest(
             @NotBlank String filePath,
-            @NotBlank @Size(max = 255) String originalFilename,
+            @Size(max = 255) String originalFilename,
             String mimeType,
             Long fileSizeBytes,
             Long folderId,

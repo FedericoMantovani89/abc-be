@@ -38,6 +38,7 @@ public class MediaService {
     private final AuditLogService auditLogService;
     private final StorageService storageService;
     private final FileValidationService fileValidationService;
+    private final ChunkedUploadService chunkedUploadService;
 
     // ------------------------------------------------------------------ alberi
 
@@ -138,6 +139,8 @@ public class MediaService {
     @Transactional
     public DocumentDto attachDocument(DocumentAttachRequest request, Long userId) {
         storageService.validateManagedPath(request.filePath(), UploadTargetType.MEDIA_DOCUMENT);
+        // Il nome e' quello registrato nella sessione di caricamento: quello del client si ignora.
+        String originalFilename = chunkedUploadService.originalFilenameOf(request.filePath());
         Path resolved = storageService.resolve(request.filePath());
         long fileSizeBytes;
         try {
@@ -146,13 +149,13 @@ public class MediaService {
             throw new NotFoundException("File non trovato: " + request.filePath());
         }
         String mimeType = fileValidationService.detectMimeType(resolved);
-        String extension = StorageService.extensionOf(request.originalFilename());
+        String extension = StorageService.extensionOf(originalFilename);
 
         Document document = new Document();
         document.setFolder(request.folderId() != null ? activeFolder(request.folderId()) : null);
         document.setTitle(request.title() != null && !request.title().isBlank()
-                ? request.title().trim() : request.originalFilename());
-        document.setFileName(request.originalFilename());
+                ? request.title().trim() : originalFilename);
+        document.setFileName(originalFilename);
         document.setFilePath(request.filePath());
         document.setFileSizeBytes(fileSizeBytes);
         document.setMimeType(mimeType);
