@@ -2,12 +2,15 @@ package it.abc.musical.controllers.api;
 
 import it.abc.musical.dto.MediaDtos.DocumentAttachRequest;
 import it.abc.musical.dto.MediaDtos.DocumentDto;
+import it.abc.musical.dto.MediaDtos.DocumentMoveRequest;
 import it.abc.musical.dto.MediaDtos.FolderCreateRequest;
+import it.abc.musical.dto.MediaDtos.FolderMoveRequest;
 import it.abc.musical.dto.MediaDtos.FolderNodeDto;
 import it.abc.musical.dto.MediaDtos.FolderPermissionsDto;
 import it.abc.musical.dto.MediaDtos.FolderPermissionsRequest;
 import it.abc.musical.dto.MediaDtos.MediaTreeDto;
 import it.abc.musical.services.MediaService;
+import it.abc.musical.services.MediaService.EnsuredFolder;
 import it.abc.musical.util.AuthUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +45,11 @@ public class AdminMediaController {
                 .body(mediaService.attachDocument(request, AuthUtil.userId(authentication)));
     }
 
+    @PatchMapping("/{id}/move")
+    public DocumentDto moveDocument(@PathVariable Long id, @RequestBody DocumentMoveRequest request) {
+        return mediaService.moveDocument(id, request.folderId());
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteDocument(@PathVariable Long id) {
         mediaService.deleteDocument(id);
@@ -54,6 +62,21 @@ public class AdminMediaController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(mediaService.createFolder(request.name(), request.parentFolderId(),
                         AuthUtil.userId(authentication)));
+    }
+
+    /** Trova o crea: 200 con la cartella gia' presente nel padre, 201 se creata ora. */
+    @PostMapping("/folder/ensure")
+    public ResponseEntity<FolderNodeDto> ensureFolder(@Valid @RequestBody FolderCreateRequest request,
+                                                      Authentication authentication) {
+        EnsuredFolder result = mediaService.ensureFolder(request.name(), request.parentFolderId(),
+                AuthUtil.userId(authentication));
+        return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK)
+                .body(result.folder());
+    }
+
+    @PatchMapping("/folder/{id}/move")
+    public FolderNodeDto moveFolder(@PathVariable Long id, @RequestBody FolderMoveRequest request) {
+        return mediaService.moveFolder(id, request.parentFolderId());
     }
 
     @DeleteMapping("/folder/{id}")

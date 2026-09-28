@@ -7,6 +7,8 @@ import it.abc.musical.dto.MediaDtos.MediaTreeDto;
 import it.abc.musical.entities.Document;
 import it.abc.musical.entities.Folder;
 import it.abc.musical.enums.UploadTargetType;
+import it.abc.musical.exceptions.BadRequestException;
+import it.abc.musical.exceptions.ConflictException;
 import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.repositories.DocumentRepository;
 import it.abc.musical.repositories.FolderRepository;
@@ -15,6 +17,7 @@ import it.abc.musical.util.AuthUtil;
 import it.abc.musical.util.FileTypeUtil;
 import it.abc.musical.util.RoleCsv;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -172,17 +175,95 @@ public class MediaService {
         auditLogService.record("DELETE", "Document", id);
     }
 
+    /** Sposta il documento in un'altra cartella; null = radice. */
+    @Transactional
+    public DocumentDto moveDocument(Long id, Long folderId) {
+        Document document = documentRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new NotFoundException("File non trovato"));
+        document.setFolder(folderId != null ? activeFolder(folderId) : null);
+        document = documentRepository.save(document);
+        auditLogService.record("MOVE", "Document", id);
+        return DocumentDto.from(document);
+    }
+
     // ------------------------------------------------------------------ cartelle
 
     @Transactional
     public FolderNodeDto createFolder(String name, Long parentFolderId, Long userId) {
+        Folder parent = parentFolderId != null ? activeFolder(parentFolderId) : null;
+        return FolderNodeDto.of(newFolder(name.trim(), parent, userId));
+    }
+
+    /** Esito di ensureFolder: la cartella e se e' stata creata ora. */
+    public record EnsuredFolder(FolderNodeDto folder, boolean created) {
+    }
+
+    /**
+     * Trova o crea: se nel padre c'e' gia' una cartella attiva con quel nome (senza maiuscole)
+     * restituisce quella, altrimenti la crea. Serve al caricamento di cartelle intere.
+     */
+    @Transactional
+    public EnsuredFolder ensureFolder(String name, Long parentFolderId, Long userId) {
+        Folder parent = parentFolderId != null ? activeFolder(parentFolderId) : null;
+        String trimmed = name.trim();
+        return folderRepository.findActiveByNameInParent(parentKey(parent), trimmed)
+                .map(existing -> new EnsuredFolder(FolderNodeDto.of(existing), false))
+                .orElseGet(() -> new EnsuredFolder(FolderNodeDto.of(newFolder(trimmed, parent, userId)), true));
+    }
+
+    private Folder newFolder(String name, Folder parent, Long userId) {
+        requireFreeName(name, parent, null);
         Folder folder = new Folder();
-        folder.setName(name.trim());
-        folder.setParentFolder(parentFolderId != null ? activeFolder(parentFolderId) : null);
+        folder.setName(name);
+        folder.setParentFolder(parent);
         folder.setCreatedBy(userId);
-        folder = folderRepository.save(folder);
+        folder = saveFolder(folder);
         auditLogService.record("CREATE", "Folder", folder.getId());
+        return folder;
+    }
+
+    /** Sposta la cartella (con tutto il contenuto) sotto un altro padre; null = radice. */
+    @Transactional
+    public FolderNodeDto moveFolder(Long id, Long parentFolderId) {
+        Folder folder = activeFolder(id);
+        Folder parent = parentFolderId != null ? activeFolder(parentFolderId) : null;
+        for (Folder current = parent; current != null; current = current.getParentFolder()) {
+            if (current.getId().equals(folder.getId())) {
+                throw new BadRequestException(
+                        "Non puoi spostare una cartella dentro se stessa o in una sua sottocartella.");
+            }
+        }
+        requireFreeName(folder.getName(), parent, folder.getId());
+        folder.setParentFolder(parent);
+        folder = saveFolder(folder);
+        auditLogService.record("MOVE", "Folder", id);
         return FolderNodeDto.of(folder);
+    }
+
+    /** Nessun'altra cartella attiva con lo stesso nome (senza maiuscole) nello stesso padre. */
+    private void requireFreeName(String name, Folder parent, Long selfId) {
+        folderRepository.findActiveByNameInParent(parentKey(parent), name)
+                .filter(other -> !other.getId().equals(selfId))
+                .ifPresent(other -> {
+                    throw duplicateName(name);
+                });
+    }
+
+    /** Il controllo prima del salvataggio non copre due richieste in parallelo: l'indice unico si'. */
+    private Folder saveFolder(Folder folder) {
+        try {
+            return folderRepository.saveAndFlush(folder);
+        } catch (DataIntegrityViolationException e) {
+            throw duplicateName(folder.getName());
+        }
+    }
+
+    private static ConflictException duplicateName(String name) {
+        return new ConflictException("Esiste gia' una cartella «" + name + "» in quella posizione.");
+    }
+
+    private static long parentKey(Folder parent) {
+        return parent != null ? parent.getId() : 0L;
     }
 
     /** Soft-delete ricorsivo di cartella, sottocartelle e documenti contenuti. */
