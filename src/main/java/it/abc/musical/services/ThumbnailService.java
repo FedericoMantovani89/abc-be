@@ -171,7 +171,7 @@ public class ThumbnailService {
     }
 
     /** Legge solo l'intestazione: false se l'immagine e' troppo grande o il formato e' sconosciuto. */
-    private static boolean withinPixelLimit(Path source) throws IOException {
+    static boolean withinPixelLimit(Path source) throws IOException {
         try (ImageInputStream in = ImageIO.createImageInputStream(source.toFile())) {
             if (in == null) {
                 return false;

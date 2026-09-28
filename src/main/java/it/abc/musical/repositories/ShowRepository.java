@@ -18,6 +18,10 @@ public interface ShowRepository extends JpaRepository<Show, Long> {
 
     Optional<Show> findByIdAndDeletedAtIsNull(Long id);
 
+    /** Spettacoli fra cui scegliere la locandina delle email: non cancellati e con locandina. */
+    @Query("select s.id from Show s where s.deletedAt is null and s.posterImageUrl is not null and s.posterImageUrl <> ''")
+    List<Long> findIdsWithPosterAndNotDeleted();
+
     @Query("select c.roleName from ShowCast c where c.show.id = :showId")
     List<String> findCastRoleNames(@Param("showId") Long showId);
 
