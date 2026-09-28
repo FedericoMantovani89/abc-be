@@ -62,6 +62,14 @@ public final class MediaDtos {
     public record FolderCreateRequest(@NotBlank @Size(max = 255) String name, Long parentFolderId) {
     }
 
+    /** Spostamento di un documento: folderId null = radice. */
+    public record DocumentMoveRequest(Long folderId) {
+    }
+
+    /** Spostamento di una cartella: parentFolderId null = radice. */
+    public record FolderMoveRequest(Long parentFolderId) {
+    }
+
     public record FolderPermissionsDto(List<String> allowedRoles) {
     }
 
