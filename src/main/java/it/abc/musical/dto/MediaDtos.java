@@ -71,6 +71,14 @@ public final class MediaDtos {
     public record FolderMoveRequest(Long parentFolderId) {
     }
 
+    /** Nuovo titolo mostrato del documento: fileName ed estensione restano come sono. */
+    public record DocumentRenameRequest(@NotBlank @Size(max = 255) String title) {
+    }
+
+    /** Nuovo nome della cartella: stessa validazione della creazione. */
+    public record FolderRenameRequest(@NotBlank @Size(max = 255) String name) {
+    }
+
     public record FolderPermissionsDto(List<String> allowedRoles) {
     }
 
