@@ -22,6 +22,7 @@
         <tika.version>4.0.0</tika.version>
         <pdfbox.version>3.0.8</pdfbox.version>
         <jsoup.version>1.23.2</jsoup.version>
+        <thumbnailator.version>0.4.21</thumbnailator.version>
         <passay.version>2.0.0</passay.version>
         <bucket4j.version>8.20.0</bucket4j.version>
         <lombok.version>1.18.48</lombok.version>
@@ -92,6 +93,12 @@
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
             <version>${pdfbox.version}</version>
+        </dependency>
+        <!-- Anteprime ridotte delle immagini dell'archivio (rispetta l'orientamento EXIF). -->
+        <dependency>
+            <groupId>net.coobird</groupId>
+            <artifactId>thumbnailator</artifactId>
+            <version>${thumbnailator.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jsoup</groupId>

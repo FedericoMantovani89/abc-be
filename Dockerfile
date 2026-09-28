@@ -8,6 +8,8 @@ RUN mvn package -DskipTests -q
 
 # Stage 2: runtime JRE slim
 FROM eclipse-temurin:21-jre-alpine
+# ffmpeg: fotogramma di anteprima dei video dell'archivio (ThumbnailService).
+RUN apk add --no-cache ffmpeg
 RUN addgroup -S abc && adduser -S abc -G abc
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar

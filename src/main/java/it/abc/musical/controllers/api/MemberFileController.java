@@ -3,11 +3,13 @@ package it.abc.musical.controllers.api;
 import it.abc.musical.entities.Document;
 import it.abc.musical.services.MediaService;
 import it.abc.musical.services.StorageService;
+import it.abc.musical.services.ThumbnailService;
 import it.abc.musical.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourceRegion;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRange;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Stream file area soci con supporto Range (audio/video seek) e download.
@@ -38,6 +41,7 @@ public class MemberFileController {
 
     private final MediaService mediaService;
     private final StorageService storageService;
+    private final ThumbnailService thumbnailService;
 
     /** File intero (visualizzazione o, con download=true, scaricamento). */
     @GetMapping(value = "/{uuid}", headers = "!" + HttpHeaders.RANGE)
@@ -93,6 +97,37 @@ public class MemberFileController {
                 .contentType(mediaTypeOf(document))
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                 .body(new ResourceRegion(resource, start, rangeLength));
+    }
+
+    /**
+     * Anteprima JPEG ridotta di un'immagine o di un video (lato lungo al massimo w: 480 se assente,
+     * 1600, qualsiasi altro valore 400). Stessa regola d'accesso del file; 404 se il documento non
+     * ha un'anteprima o se non si riesce a generarla. Non conta come download.
+     */
+    @GetMapping("/{uuid}/thumb")
+    public ResponseEntity<Resource> thumbnail(@PathVariable UUID uuid,
+                                              @RequestParam(required = false) String w,
+                                              Authentication authentication) {
+        Document document = mediaService.byUuidForRoles(uuid, AuthUtil.roles(authentication));
+        int width = ThumbnailService.normalizeWidth(parseWidth(w));
+        return thumbnailService.thumbnail(document, width)
+                .<ResponseEntity<Resource>>map(path -> ResponseEntity.ok()
+                        .contentType(MediaType.IMAGE_JPEG)
+                        .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePrivate())
+                        .body(new FileSystemResource(path)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** w non numerico conta come "qualsiasi altro valore", non come errore. */
+    private static Integer parseWidth(String w) {
+        if (w == null) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(w.trim());
+        } catch (NumberFormatException e) {
+            return -1;
+        }
     }
 
     private static MediaType mediaTypeOf(Document document) {
