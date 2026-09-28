@@ -2,6 +2,7 @@ package it.abc.musical.services;
 
 import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.exceptions.BadRequestException;
+import it.abc.musical.TestPdfs;
 import it.abc.musical.enums.MediaFileType;
 import it.abc.musical.util.FileTypeUtil;
 import org.junit.jupiter.api.Test;
@@ -20,8 +21,7 @@ class FileValidationServiceTest {
 
     private final FileValidationService service = new FileValidationService();
 
-    private static final byte[] PDF_BYTES = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF"
-            .getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] PDF_BYTES = TestPdfs.clean();
     private static final byte[] PNG_BYTES = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A,
             0, 0, 0, 13, 'I', 'H', 'D', 'R'};
     private static final byte[] EXE_BYTES = {'M', 'Z', (byte) 0x90, 0, 3, 0, 0, 0};
@@ -131,6 +131,53 @@ class FileValidationServiceTest {
         assertThatThrownBy(() -> validateZip(java.util.Arrays.copyOf(zip, zip.length - 10)))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("L'archivio ZIP e' illeggibile o danneggiato.");
+    }
+
+    // ------------------------------------------------------------------ PDF
+
+    private String validatePdf(byte[] pdf) {
+        return service.validate(new MockMultipartFile("file", "copione.pdf", "application/pdf", pdf),
+                UploadTargetType.MEDIA_DOCUMENT);
+    }
+
+    @Test
+    void cleanGeneratedPdfIsAccepted() {
+        assertThat(validatePdf(TestPdfs.clean())).isEqualTo("application/pdf");
+    }
+
+    @Test
+    void pdfWithJavaScriptOpenActionIsRejectedEvenWhenCompressed() {
+        byte[] pdf = TestPdfs.withOpenActionJavaScript();
+        // Il JavaScript sta in un object stream compresso: una ricerca di byte non lo vedrebbe.
+        assertThat(new String(pdf, StandardCharsets.ISO_8859_1)).doesNotContain("/JavaScript", "app.alert");
+
+        assertThatThrownBy(() -> validatePdf(pdf))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Il PDF contiene codice JavaScript: non e' ammesso. "
+                        + "Esportalo o stampalo di nuovo come PDF semplice e riprova.");
+    }
+
+    @Test
+    void pdfWithDocumentLevelJavaScriptInNamesIsRejected() {
+        assertThatThrownBy(() -> validatePdf(TestPdfs.withJavaScriptInNameTree()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageStartingWith("Il PDF contiene codice JavaScript");
+    }
+
+    @Test
+    void pdfWithLaunchActionIsRejected() {
+        assertThatThrownBy(() -> validatePdf(TestPdfs.withLaunchLink()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Il PDF contiene un'azione che avvia programmi o apre file esterni: non e' ammesso.");
+    }
+
+    @Test
+    void pdfTheParserCannotReadIsRejected() {
+        byte[] broken = "%PDF-1.7\nquesto non e' un PDF vero\n".getBytes(StandardCharsets.US_ASCII);
+        assertThatThrownBy(() -> validatePdf(broken))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Il PDF e' illeggibile, danneggiato o protetto da password: "
+                        + "non e' possibile verificarne il contenuto.");
     }
 
     @Test

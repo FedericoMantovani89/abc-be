@@ -4,6 +4,7 @@ import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.util.FileTypeUtil;
 import it.abc.musical.util.FileTypeUtil.Category;
+import it.abc.musical.util.PdfContentRules;
 import it.abc.musical.util.ZipContentRules;
 import org.apache.tika.Tika;
 import org.springframework.stereotype.Service;
@@ -102,8 +103,20 @@ public class FileValidationService {
         }
         if ("zip".equals(extension)) {
             checkZip(file);
+        } else if ("pdf".equals(extension)) {
+            checkPdf(file);
         }
         return detectedMime;
+    }
+
+    private void checkPdf(MultipartFile file) {
+        byte[] content;
+        try {
+            content = file.getBytes();
+        } catch (IOException e) {
+            throw new BadRequestException("File illeggibile");
+        }
+        PdfContentRules.check(content);
     }
 
     /** ZipFile vuole un file su disco: copia temporanea (i documenti pesano al massimo 10 MB). */
