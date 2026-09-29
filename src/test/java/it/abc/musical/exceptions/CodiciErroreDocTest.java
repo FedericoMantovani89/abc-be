@@ -32,7 +32,9 @@ class CodiciErroreDocTest {
             "auth.account.non.verificato", "auth.credenziali.non.valide", "auth.troppe.richieste",
             "errore.dati.non.validi", "errore.corpo.non.leggibile", "errore.parametro.non.valido",
             "errore.parametro.obbligatorio", "errore.risorsa.non.trovata", "errore.vincolo.database",
-            "errore.file.troppo.grande.limite", "errore.file.troppo.grande", "errore.interno");
+            "errore.file.troppo.grande.limite", "errore.file.troppo.grande", "errore.interno",
+            "validazione.obbligatorio", "validazione.email.non.valida", "validazione.lunghezza",
+            "validazione.valore.non.valido", "validazione.password");
 
     @Test
     void everyCodeUsedInTheSourceHasAMessageAndIsDocumented() throws IOException {

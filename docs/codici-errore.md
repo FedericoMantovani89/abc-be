@@ -1,6 +1,6 @@
 # Codici di errore delle API
 
-Ogni risposta di errore ha la forma `{"error": "<messaggio>", "code": "<codice>"}` (la validazione dei campi aggiunge `"fields": {campo: messaggio}`). `error` e' il messaggio italiano di sempre; `code` e' il codice stabile: il frontend mostra il testo che corrisponde al codice.
+Ogni risposta di errore ha la forma `{"error": "<messaggio>", "code": "<codice>"}` (la validazione dei campi aggiunge `"fields": {campo: messaggio italiano}` e `"fieldCodes": {campo: codice}`). `error` e' il messaggio italiano di sempre; `code` e' il codice stabile: il frontend mostra il testo che corrisponde al codice.
 
 - I testi stanno in `src/main/resources/messages.properties` (uno per codice). `{0}`, `{1}`... sono i valori inseriti nel testo.
 - Un testo si puo' cambiare sul server copiando la riga in `/config/messages.properties` e riavviando. Nei testi con `{0}` l'apostrofo va raddoppiato (`''`).
@@ -120,3 +120,15 @@ Ogni risposta di errore ha la forma `{"error": "<messaggio>", "code": "<codice>"
 | `errore.file.troppo.grande.limite` | 413 | File troppo grande: supera il limite massimo di {0} MB consentito dal server. Riduci le dimensioni del file e riprova. |
 | `errore.file.troppo.grande` | 413 | File troppo grande. Riduci le dimensioni del file e riprova. |
 | `errore.interno` | 500 | Errore interno del server |
+
+## Validazione dei campi
+
+Compaiono in `fieldCodes` (e il testo in `fields`) della risposta 400 `errore.dati.non.validi`, un codice per campo.
+
+| Codice | Quando | Messaggio |
+|---|---|---|
+| `validazione.obbligatorio` | campo vuoto o mancante | Campo obbligatorio |
+| `validazione.email.non.valida` | email non ben formata | Indirizzo email non valido |
+| `validazione.lunghezza` | testo oltre il massimo ({0}) | Massimo {0} caratteri |
+| `validazione.valore.non.valido` | numero fuori limite o altro vincolo | Valore non valido |
+| `validazione.password` | password fuori dalla policy | La password deve avere almeno 8 caratteri, con maiuscole, minuscole, numeri e un simbolo, senza spazi |

@@ -95,4 +95,54 @@ class CodiciErroreApiTest extends IntegrationTestBase {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$", hasKey("code")));
     }
+
+    @Test
+    void registrationValidationIsItalianWithFieldCodes() throws Exception {
+        mockMvc.perform(post("/api/auth/register").contentType("application/json")
+                        .content("{\"email\": \"non-una-email\", \"password\": \"debole\", \"firstName\": \"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Dati non validi"))
+                .andExpect(jsonPath("$.code").value("errore.dati.non.validi"))
+                .andExpect(jsonPath("$.fields.email").value("Indirizzo email non valido"))
+                .andExpect(jsonPath("$.fieldCodes.email").value("validazione.email.non.valida"))
+                .andExpect(jsonPath("$.fieldCodes.password").value("validazione.password"))
+                .andExpect(jsonPath("$.fields.password").value(org.hamcrest.Matchers.startsWith("La password deve avere")))
+                .andExpect(jsonPath("$.fields.firstName").value("Campo obbligatorio"))
+                .andExpect(jsonPath("$.fieldCodes.firstName").value("validazione.obbligatorio"))
+                .andExpect(jsonPath("$.fieldCodes.lastName").value("validazione.obbligatorio"));
+    }
+
+    @Test
+    void resetPasswordValidationIsItalianWithFieldCodes() throws Exception {
+        mockMvc.perform(post("/api/auth/reset-password").contentType("application/json")
+                        .content("{\"token\": \"\", \"newPassword\": \"debole\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldCodes.token").value("validazione.obbligatorio"))
+                .andExpect(jsonPath("$.fields.token").value("Campo obbligatorio"))
+                .andExpect(jsonPath("$.fieldCodes.newPassword").value("validazione.password"));
+    }
+
+    @Test
+    void eventCreationValidationIsItalianWithFieldCodes() throws Exception {
+        String longTitle = "x".repeat(256);
+        var event = new org.springframework.mock.web.MockMultipartFile("event", "", "application/json",
+                ("{\"title\": \"" + longTitle + "\", \"locationProvince\": \"ABC\"}").getBytes());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/admin/events")
+                        .file(event).with(asRole("ADMIN")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldCodes.title").value("validazione.lunghezza"))
+                .andExpect(jsonPath("$.fields.title").value("Massimo 255 caratteri"))
+                .andExpect(jsonPath("$.fields.locationProvince").value("Massimo 2 caratteri"))
+                .andExpect(jsonPath("$.fieldCodes.eventDate").value("validazione.obbligatorio"))
+                .andExpect(jsonPath("$.fieldCodes.locationVenue").value("validazione.obbligatorio"));
+    }
+
+    @Test
+    void showCreationValidationIsItalianWithFieldCodes() throws Exception {
+        mockMvc.perform(post("/api/admin/shows").with(asRole("ADMIN")).contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.title").value("Campo obbligatorio"))
+                .andExpect(jsonPath("$.fieldCodes.title").value("validazione.obbligatorio"));
+    }
 }
