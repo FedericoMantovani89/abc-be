@@ -100,7 +100,7 @@ app:
     sede: "Via Interna Molini 1C, 37132 Verona (VR)"
     cf: "93242450232"
     piva: "04443330230"
-    runts: ${ASSOCIAZIONE_RUNTS:DA_INSERIRE}
+    runts: ${ASSOCIAZIONE_RUNTS:2716 del 04/07/2022}
   cors:
     # Origini ammesse oltre al sito (app.frontend-url). Vuota in produzione; in sviluppo vedi application-dev.yml.
     extra-origins: []

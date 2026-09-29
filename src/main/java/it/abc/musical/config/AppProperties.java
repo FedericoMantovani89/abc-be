@@ -171,9 +171,9 @@ public class AppProperties {
         private String cf;
         @NotBlank
         private String piva;
-        /** "DA_INSERIRE" finche' ABC non comunica il numero. */
+        /** Numero di iscrizione al RUNTS; "DA_INSERIRE" o vuoto = non mostrato. */
         @NotBlank
-        private String runts = "DA_INSERIRE";
+        private String runts = "2716 del 04/07/2022";
     }
 
     @Getter

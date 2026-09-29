@@ -73,7 +73,7 @@ class ConfigurazioneTest {
             assertThat(p.getAssociazione().getSede()).isEqualTo("Via Interna Molini 1C, 37132 Verona (VR)");
             assertThat(p.getAssociazione().getCf()).isEqualTo("93242450232");
             assertThat(p.getAssociazione().getPiva()).isEqualTo("04443330230");
-            assertThat(p.getAssociazione().getRunts()).isEqualTo("DA_INSERIRE");
+            assertThat(p.getAssociazione().getRunts()).isEqualTo("2716 del 04/07/2022");
             assertThat(p.getCors().getExtraOrigins()).isEmpty();
             assertThat(p.getLimits().getVerificationLinkHours()).isEqualTo(24);
             assertThat(p.getLimits().getResetLinkHours()).isEqualTo(1);
