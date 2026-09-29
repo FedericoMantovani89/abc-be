@@ -125,7 +125,7 @@ public class EventService {
 
     private Event activeEvent(Long id) {
         return eventRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new NotFoundException("Evento non trovato"));
+                .orElseThrow(() -> new NotFoundException("evento.non.trovato"));
     }
 
     private void applyRequest(Event event, EventUpsertRequest request, Long userId) {
@@ -147,11 +147,11 @@ public class EventService {
         event.setContactPhone(request.contactPhone());
         event.setEventType(request.eventTypeId() != null
                 ? eventTypeRepository.findById(request.eventTypeId())
-                        .orElseThrow(() -> new NotFoundException("Tipo evento non trovato"))
+                        .orElseThrow(() -> new NotFoundException("evento.tipo.non.trovato"))
                 : null);
         event.setShow(request.showId() != null
                 ? showRepository.findByIdAndDeletedAtIsNull(request.showId())
-                        .orElseThrow(() -> new NotFoundException("Spettacolo non trovato"))
+                        .orElseThrow(() -> new NotFoundException("spettacolo.non.trovato"))
                 : null);
         event.setHeroFocusX(request.heroFocusX());
         event.setHeroFocusY(request.heroFocusY());
@@ -171,12 +171,10 @@ public class EventService {
     private void validateBookingWindow(LocalDateTime bookingOpenAt, LocalDateTime bookingCloseAt,
             LocalDateTime eventDate) {
         if (bookingOpenAt != null && bookingCloseAt != null && !bookingOpenAt.isBefore(bookingCloseAt)) {
-            throw new BadRequestException(
-                    "L'apertura delle prenotazioni deve essere precedente alla chiusura.");
+            throw new BadRequestException("evento.prenotazioni.apertura.dopo.chiusura");
         }
         if (bookingCloseAt != null && bookingCloseAt.isAfter(eventDate)) {
-            throw new BadRequestException(
-                    "La chiusura delle prenotazioni non può essere successiva alla data dell'evento.");
+            throw new BadRequestException("evento.prenotazioni.chiusura.dopo.evento");
         }
     }
 
@@ -195,7 +193,7 @@ public class EventService {
      */
     private String clonePoster(Long sourceEventId) {
         Event source = eventRepository.findByIdAndDeletedAtIsNull(sourceEventId)
-                .orElseThrow(() -> new BadRequestException("Evento di origine non trovato"));
+                .orElseThrow(() -> new BadRequestException("evento.origine.non.trovato"));
         String sourcePosterUrl = source.getPosterImageUrl();
         if (sourcePosterUrl == null || sourcePosterUrl.isBlank()) {
             return null;

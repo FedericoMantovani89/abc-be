@@ -10,7 +10,6 @@ import it.abc.musical.security.OAuth2AuthenticationSuccessHandler;
 import it.abc.musical.security.RateLimitingFilter;
 import it.abc.musical.security.Roles;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -31,6 +30,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -49,11 +49,7 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtAuthenticationConverter jwtAuthenticationConverter;
 
-    @Value("${app.frontend-url}")
-    private String frontendUrl;
-
-    @Value("${security.remember-me-key}")
-    private String rememberMeKey;
+    private final AppProperties props;
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, SessionRegistry sessionRegistry) throws Exception {
@@ -92,7 +88,7 @@ public class SecurityConfig {
                 jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
             .logout(logout -> logout
                 .logoutUrl("/api/auth/logout")
-                .logoutSuccessUrl(frontendUrl + "/login")
+                .logoutSuccessUrl(props.getFrontendUrl() + "/login")
                 .deleteCookies("JSESSIONID", "remember-me")
                 .invalidateHttpSession(true)
                 .permitAll()
@@ -101,7 +97,7 @@ public class SecurityConfig {
                 .tokenValiditySeconds(90 * 24 * 60 * 60) // 90 giorni
                 .rememberMeParameter("rememberMe")
                 .userDetailsService(customUserDetailsService)
-                .key(rememberMeKey)
+                .key(props.getSecurity().getRememberMeKey())
             )
             .exceptionHandling(ex -> ex
                 .defaultAuthenticationEntryPointFor(
@@ -138,16 +134,33 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:3000",
-                frontendUrl
-        ));
+        config.setAllowedOrigins(allowedOrigins());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    /**
+     * Il backend risponde solo al sito: {@code app.frontend-url} e nient'altro. Altre origini
+     * (es. http://localhost:3000 in sviluppo) si aggiungono solo con {@code app.cors.extra-origins},
+     * vuota di default.
+     */
+    private List<String> allowedOrigins() {
+        List<String> origins = new ArrayList<>();
+        origins.add(stripTrailingSlash(props.getFrontendUrl()));
+        props.getCors().getExtraOrigins().stream()
+                .map(SecurityConfig::stripTrailingSlash)
+                .filter(o -> !o.isBlank() && !origins.contains(o))
+                .forEach(origins::add);
+        return origins;
+    }
+
+    private static String stripTrailingSlash(String url) {
+        String trimmed = url.strip();
+        return trimmed.endsWith("/") ? trimmed.substring(0, trimmed.length() - 1) : trimmed;
     }
 
     @Bean

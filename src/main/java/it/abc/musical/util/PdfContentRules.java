@@ -30,12 +30,9 @@ import java.util.Set;
  */
 public final class PdfContentRules {
 
-    static final String JAVASCRIPT_ERROR =
-            "Il PDF contiene codice JavaScript: non e' ammesso. Esportalo o stampalo di nuovo come PDF semplice e riprova.";
-    static final String LAUNCH_ERROR =
-            "Il PDF contiene un'azione che avvia programmi o apre file esterni: non e' ammesso.";
-    static final String UNREADABLE_ERROR =
-            "Il PDF e' illeggibile, danneggiato o protetto da password: non e' possibile verificarne il contenuto.";
+    static final String JAVASCRIPT_ERROR = "pdf.javascript";
+    static final String LAUNCH_ERROR = "pdf.azione.esterna";
+    static final String UNREADABLE_ERROR = "pdf.illeggibile";
 
     private static final COSName LAUNCH = COSName.getPDFName("Launch");
 

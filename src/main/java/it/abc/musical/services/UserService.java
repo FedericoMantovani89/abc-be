@@ -27,7 +27,7 @@ public class UserService {
     public User register(RegisterRequest request) {
         String email = EmailAddresses.normalize(request.email());
         if (userRepository.existsByEmailIgnoreCase(email)) {
-            throw new ConflictException("Email già registrata");
+            throw new ConflictException("auth.email.gia.registrata");
         }
         User user = new User();
         user.setEmail(email);
@@ -78,7 +78,7 @@ public class UserService {
         Token token = tokenService.consumeToken(tokenValue, Token.TYPE_PASSWORD_RESET);
         User user = token.getUser();
         if (!user.isActive()) {
-            throw new BadRequestException("Account disattivato");
+            throw new BadRequestException("auth.account.disattivato");
         }
         user.setPassword(passwordEncoder.encode(newPassword));
         // Un reset riuscito prova il possesso dell'email: l'account risulta verificato.

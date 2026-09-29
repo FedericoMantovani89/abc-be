@@ -1,10 +1,11 @@
 package it.abc.musical.services;
 
+import it.abc.musical.config.AppProperties;
 import it.abc.musical.enums.UploadTargetType;
 import it.abc.musical.exceptions.BadRequestException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -33,7 +34,12 @@ public class StorageService {
 
     private final Path root;
 
-    public StorageService(@Value("${app.upload-dir}") String uploadDir) {
+    @Autowired
+    public StorageService(AppProperties props) {
+        this(props.getUploadDir());
+    }
+
+    public StorageService(String uploadDir) {
         this.root = Path.of(uploadDir).toAbsolutePath().normalize();
     }
 
@@ -155,7 +161,7 @@ public class StorageService {
     public void validateManagedPath(String relativePath, UploadTargetType target) {
         if (relativePath == null || !MANAGED_FILE_PATTERN.matcher(relativePath).matches()
                 || !relativePath.startsWith("/" + target.subdir() + "/")) {
-            throw new BadRequestException("Path non valido: " + relativePath);
+            throw new BadRequestException("percorso.non.valido.dettaglio", relativePath);
         }
     }
 
@@ -178,7 +184,7 @@ public class StorageService {
     private Path confined(Path path) {
         Path normalized = path.normalize();
         if (!normalized.startsWith(root)) {
-            throw new BadRequestException("Path non valido");
+            throw new BadRequestException("percorso.non.valido");
         }
         return normalized;
     }

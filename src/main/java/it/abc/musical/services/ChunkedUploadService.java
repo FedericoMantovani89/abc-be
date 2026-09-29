@@ -1,5 +1,6 @@
 package it.abc.musical.services;
 
+import it.abc.musical.config.AppProperties;
 import it.abc.musical.dto.UploadDtos.CompleteUploadResponse;
 import it.abc.musical.dto.UploadDtos.InitUploadResponse;
 import it.abc.musical.enums.UploadTargetType;
@@ -7,7 +8,7 @@ import it.abc.musical.exceptions.BadRequestException;
 import it.abc.musical.exceptions.NotFoundException;
 import it.abc.musical.util.TempFileMultipartFile;
 import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -54,10 +55,18 @@ public class ChunkedUploadService {
      */
     private final Map<String, Completed> completed = new ConcurrentHashMap<>();
 
+    @Autowired
+    public ChunkedUploadService(StorageService storageService,
+                               FileValidationService fileValidationService,
+                               AppProperties props) {
+        this(storageService, fileValidationService,
+                props.getUpload().getChunkSizeMb(), props.getUpload().getSessionTtlHours());
+    }
+
     public ChunkedUploadService(StorageService storageService,
                                  FileValidationService fileValidationService,
-                                 @Value("${app.upload.chunk-size-mb:8}") int chunkSizeMb,
-                                 @Value("${app.upload.session-ttl-hours:24}") long sessionTtlHours) {
+                                 int chunkSizeMb,
+                                 long sessionTtlHours) {
         this.storageService = storageService;
         this.fileValidationService = fileValidationService;
         this.chunkSizeBytes = chunkSizeMb * 1024 * 1024;
@@ -77,7 +86,7 @@ public class ChunkedUploadService {
     public InitUploadResponse init(UploadTargetType targetType, String filename, long totalSize) {
         fileValidationService.checkAllowed(filename, totalSize, targetType);
         if (tmpDir.toFile().getUsableSpace() < totalSize) {
-            throw new BadRequestException("Spazio disco insufficiente per completare l'upload");
+            throw new BadRequestException("upload.spazio.insufficiente");
         }
 
         UUID uploadId = UUID.randomUUID();
@@ -98,7 +107,7 @@ public class ChunkedUploadService {
         Session session = sessionOf(uploadId);
         long offset = (long) index * chunkSizeBytes;
         if (offset < 0 || offset + data.length > session.totalSize()) {
-            throw new BadRequestException("Chunk fuori dai limiti dichiarati per l'upload");
+            throw new BadRequestException("upload.chunk.fuori.limiti");
         }
         try (RandomAccessFile raf = new RandomAccessFile(session.tempFile().toFile(), "rw")) {
             raf.seek(offset);
@@ -112,8 +121,7 @@ public class ChunkedUploadService {
         Session session = sessionOf(uploadId);
         File tempFile = session.tempFile().toFile();
         if (tempFile.length() != session.totalSize()) {
-            throw new BadRequestException(
-                    "Upload incompleto: dimensione ricevuta non corrisponde a quella dichiarata");
+            throw new BadRequestException("upload.dimensione.non.corrisponde");
         }
         TempFileMultipartFile adapted = new TempFileMultipartFile(tempFile, session.originalFilename(), null);
         String mimeType = fileValidationService.validate(adapted, session.targetType());
@@ -132,7 +140,7 @@ public class ChunkedUploadService {
     public String originalFilenameOf(String path) {
         Completed upload = completed.get(path);
         if (upload == null) {
-            throw new BadRequestException("Caricamento non trovato o scaduto: carica di nuovo il file.");
+            throw new BadRequestException("upload.non.trovato.scaduto");
         }
         return upload.originalFilename();
     }
@@ -176,7 +184,7 @@ public class ChunkedUploadService {
     private Session sessionOf(UUID uploadId) {
         Session session = sessions.get(uploadId);
         if (session == null) {
-            throw new NotFoundException("Sessione di upload non trovata o scaduta");
+            throw new NotFoundException("upload.sessione.non.trovata");
         }
         return session;
     }

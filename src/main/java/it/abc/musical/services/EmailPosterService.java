@@ -67,7 +67,7 @@ public class EmailPosterService {
                     }
                 }
             }
-            throw new BadRequestException("Parametro 'v' non valido: usare side o band");
+            throw new BadRequestException("email.locandina.variante.non.valida");
         }
 
         public String param() {

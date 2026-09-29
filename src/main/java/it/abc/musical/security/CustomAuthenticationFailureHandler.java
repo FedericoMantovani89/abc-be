@@ -30,10 +30,11 @@ public class CustomAuthenticationFailureHandler implements AuthenticationFailure
         recordFailedLogin(request);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        String error = exception instanceof DisabledException
-                ? "ACCOUNT_NOT_VERIFIED"
-                : "INVALID_CREDENTIALS";
-        response.getWriter().write("{\"success\": false, \"error\": \"" + error + "\"}");
+        boolean notVerified = exception instanceof DisabledException;
+        // "error" resta il valore tecnico di sempre (il frontend lo legge cosi'); "code" e' il codice stabile.
+        String error = notVerified ? "ACCOUNT_NOT_VERIFIED" : "INVALID_CREDENTIALS";
+        String code = notVerified ? "auth.account.non.verificato" : "auth.credenziali.non.valide";
+        response.getWriter().write("{\"success\": false, \"error\": \"" + error + "\", \"code\": \"" + code + "\"}");
     }
 
     /**

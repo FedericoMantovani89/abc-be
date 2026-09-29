@@ -42,25 +42,25 @@ public class AdminUserService {
                                       Boolean neverLoggedIn) {
         int pageSize = size == null ? DEFAULT_PAGE_SIZE : size;
         if (page < 0) {
-            throw new BadRequestException("Il numero di pagina non puo' essere negativo");
+            throw new BadRequestException("utenti.pagina.negativa");
         }
         if (pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
-            throw new BadRequestException("La dimensione della pagina deve essere fra 1 e " + MAX_PAGE_SIZE);
+            throw new BadRequestException("utenti.dimensione.pagina", String.valueOf(MAX_PAGE_SIZE));
         }
         Long roleId = null;
         if (!isBlank(role)) {
             roleId = roleRepository.findByName(role)
-                    .orElseThrow(() -> new BadRequestException("Ruolo non valido: " + role))
+                    .orElseThrow(() -> new BadRequestException("ruolo.non.valido", role))
                     .getId();
         }
         LocalDate from = parseDate("lastLoginFrom", lastLoginFrom);
         LocalDate to = parseDate("lastLoginTo", lastLoginTo);
         boolean never = Boolean.TRUE.equals(neverLoggedIn);
         if (never && (from != null || to != null)) {
-            throw new BadRequestException("'Mai entrato' non si combina con un intervallo di ultimo accesso");
+            throw new BadRequestException("utenti.mai.entrato.con.intervallo");
         }
         if (from != null && to != null && from.isAfter(to)) {
-            throw new BadRequestException("La data iniziale dell'ultimo accesso e' dopo quella finale");
+            throw new BadRequestException("utenti.intervallo.date.invertito");
         }
         UserAdminFilter filter = new UserAdminFilter(
                 blankToNull(name), blankToNull(email), roleId, active,
@@ -85,10 +85,10 @@ public class AdminUserService {
     public UserAdminDto setRole(Long id, String roleName) {
         User user = requireTouchable(id);
         if (Roles.GOD.equalsIgnoreCase(roleName)) {
-            throw new BadRequestException("Il ruolo GOD non è assegnabile");
+            throw new BadRequestException("utenti.ruolo.god.non.assegnabile");
         }
         Role role = roleRepository.findByName(roleName.toUpperCase())
-                .orElseThrow(() -> new NotFoundException("Ruolo non trovato: " + roleName));
+                .orElseThrow(() -> new NotFoundException("ruolo.non.trovato", roleName));
         user.setRole(role);
         userRepository.save(user);
         auditLogService.record("SET_ROLE_" + role.getName(), "User", id);
@@ -98,9 +98,9 @@ public class AdminUserService {
     /** L'account tecnico GOD non è modificabile. */
     private User requireTouchable(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+                .orElseThrow(() -> new NotFoundException("utente.non.trovato"));
         if (Roles.GOD.equals(user.getRole().getName())) {
-            throw new ConflictException("L'account tecnico non è modificabile");
+            throw new ConflictException("utenti.account.tecnico");
         }
         return user;
     }
@@ -112,7 +112,7 @@ public class AdminUserService {
         try {
             return LocalDate.parse(value.strip());
         } catch (DateTimeParseException e) {
-            throw new BadRequestException("Parametro '%s' non valido: data attesa AAAA-MM-GG".formatted(param));
+            throw new BadRequestException("utenti.data.non.valida", param);
         }
     }
 

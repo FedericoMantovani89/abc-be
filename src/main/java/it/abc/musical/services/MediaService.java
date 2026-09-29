@@ -123,7 +123,7 @@ public class MediaService {
     public Document byUuidForRoles(UUID uuid, Set<String> userRoles) {
         return documentRepository.findByUuidAndDeletedAtIsNull(uuid)
                 .filter(d -> canAccess(d, userRoles))
-                .orElseThrow(() -> new NotFoundException("File non trovato"));
+                .orElseThrow(() -> new NotFoundException("media.file.non.trovato"));
     }
 
     /**
@@ -149,7 +149,7 @@ public class MediaService {
         try {
             fileSizeBytes = Files.size(resolved);
         } catch (IOException e) {
-            throw new NotFoundException("File non trovato: " + request.filePath());
+            throw new NotFoundException("media.file.non.trovato.percorso", request.filePath());
         }
         String mimeType = fileValidationService.detectMimeType(resolved);
         String extension = StorageService.extensionOf(originalFilename);
@@ -172,7 +172,7 @@ public class MediaService {
     @Transactional
     public void deleteDocument(Long id) {
         Document document = documentRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new NotFoundException("File non trovato"));
+                .orElseThrow(() -> new NotFoundException("media.file.non.trovato"));
         document.markDeleted();
         documentRepository.save(document);
         auditLogService.record("DELETE", "Document", id);
@@ -182,7 +182,7 @@ public class MediaService {
     @Transactional
     public DocumentDto moveDocument(Long id, Long folderId) {
         Document document = documentRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new NotFoundException("File non trovato"));
+                .orElseThrow(() -> new NotFoundException("media.file.non.trovato"));
         document.setFolder(folderId != null ? activeFolder(folderId) : null);
         document = documentRepository.save(document);
         auditLogService.record("MOVE", "Document", id);
@@ -193,7 +193,7 @@ public class MediaService {
     @Transactional
     public DocumentDto renameDocument(Long id, String title) {
         Document document = documentRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new NotFoundException("File non trovato"));
+                .orElseThrow(() -> new NotFoundException("media.file.non.trovato"));
         document.setTitle(title.trim());
         document = documentRepository.save(document);
         auditLogService.record("RENAME", "Document", id);
@@ -243,8 +243,7 @@ public class MediaService {
         Folder parent = parentFolderId != null ? activeFolder(parentFolderId) : null;
         for (Folder current = parent; current != null; current = current.getParentFolder()) {
             if (current.getId().equals(folder.getId())) {
-                throw new BadRequestException(
-                        "Non puoi spostare una cartella dentro se stessa o in una sua sottocartella.");
+                throw new BadRequestException("media.cartella.in.se.stessa");
             }
         }
         requireFreeName(folder.getName(), parent, folder.getId());
@@ -285,7 +284,7 @@ public class MediaService {
     }
 
     private static ConflictException duplicateName(String name) {
-        return new ConflictException("Esiste gia' una cartella «" + name + "» in quella posizione.");
+        return new ConflictException("media.cartella.duplicata", name);
     }
 
     private static long parentKey(Folder parent) {
@@ -330,6 +329,6 @@ public class MediaService {
 
     private Folder activeFolder(Long id) {
         return folderRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new NotFoundException("Cartella non trovata"));
+                .orElseThrow(() -> new NotFoundException("media.cartella.non.trovata"));
     }
 }

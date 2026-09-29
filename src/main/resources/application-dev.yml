@@ -5,6 +5,14 @@ spring:
       hibernate:
         format_sql: true
 
+app:
+  # In sviluppo i valori di produzione (application.yml) non servono: si punta a localhost.
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:3000}
+  cors:
+    extra-origins:
+      - http://localhost:3000
+
 logging:
   level:
     it.abc.musical: DEBUG

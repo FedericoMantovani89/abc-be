@@ -1,5 +1,6 @@
 package it.abc.musical.services;
 
+import it.abc.musical.config.AppProperties;
 import it.abc.musical.entities.AuditLog;
 import it.abc.musical.repositories.AuditLogRepository;
 import it.abc.musical.security.ClientIp;
@@ -8,7 +9,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -36,8 +36,7 @@ public class AuditLogService {
      */
     private final ObjectProvider<AuditLogService> self;
 
-    @Value("${app.audit.retention-months:12}")
-    private int retentionMonths;
+    private final AppProperties props;
 
     /**
      * Registra un'azione admin; non solleva mai (l'audit non deve rompere l'operazione).
@@ -84,8 +83,8 @@ public class AuditLogService {
     @Scheduled(cron = "0 30 3 * * *")
     @Transactional
     public void purgeOldAuditLogs() {
-        LocalDateTime cutoff = LocalDateTime.now().minusMonths(retentionMonths);
+        LocalDateTime cutoff = LocalDateTime.now().minusMonths(props.getAudit().getRetentionMonths());
         int deleted = auditLogRepository.deleteCreatedBefore(cutoff);
-        log.info("Purged {} audit log rows older than {} months", deleted, retentionMonths);
+        log.info("Purged {} audit log rows older than {} months", deleted, props.getAudit().getRetentionMonths());
     }
 }

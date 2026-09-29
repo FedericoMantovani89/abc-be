@@ -43,9 +43,7 @@ public final class ZipContentRules {
     public static void check(Path zip) {
         try (ZipFile zipFile = new ZipFile(zip.toFile(), LEGACY_ZIP_NAMES)) {
             if (zipFile.size() > MAX_ENTRIES) {
-                throw new BadRequestException(
-                        "L'archivio ZIP contiene piu' di %d file: dividilo in archivi piu' piccoli."
-                                .formatted(MAX_ENTRIES));
+                throw new BadRequestException("zip.troppi.file", String.valueOf(MAX_ENTRIES));
             }
             long totalBytes = 0;
             for (Enumeration<? extends ZipEntry> entries = zipFile.entries(); entries.hasMoreElements(); ) {
@@ -55,32 +53,25 @@ public final class ZipContentRules {
                 }
                 long size = entry.getSize();
                 if (size < 0) {
-                    throw new BadRequestException(
-                            "L'archivio ZIP non dichiara la dimensione di «%s»: non e' possibile verificarlo."
-                                    .formatted(entry.getName()));
+                    throw new BadRequestException("zip.dimensione.non.dichiarata", entry.getName());
                 }
                 totalBytes += size;
                 if (totalBytes > MAX_UNCOMPRESSED_BYTES) {
-                    throw new BadRequestException(
-                            "L'archivio ZIP una volta estratto supera i 2 GB: dividilo in archivi piu' piccoli.");
+                    throw new BadRequestException("zip.troppo.grande");
                 }
             }
         } catch (IOException | IllegalArgumentException e) {
-            throw new BadRequestException("L'archivio ZIP e' illeggibile o danneggiato.");
+            throw new BadRequestException("zip.illeggibile");
         }
     }
 
     private static void checkName(String name) {
         String extension = extensionOf(name);
         if (EXECUTABLE_OR_MACRO.contains(extension)) {
-            throw new BadRequestException(
-                    "L'archivio ZIP contiene «%s», un file eseguibile o con macro: non e' ammesso. Toglilo dall'archivio e riprova."
-                            .formatted(name));
+            throw new BadRequestException("zip.eseguibile", name);
         }
         if (ARCHIVES.contains(extension)) {
-            throw new BadRequestException(
-                    "L'archivio ZIP contiene «%s», che e' a sua volta un archivio compresso: non e' ammesso. Estrailo e caricalo a parte."
-                            .formatted(name));
+            throw new BadRequestException("zip.archivio.annidato", name);
         }
     }
 

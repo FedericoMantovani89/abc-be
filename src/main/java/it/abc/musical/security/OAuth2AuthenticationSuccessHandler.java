@@ -1,10 +1,10 @@
 package it.abc.musical.security;
 
+import it.abc.musical.config.AppProperties;
 import it.abc.musical.entities.User;
 import it.abc.musical.repositories.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -27,12 +27,11 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
     public OAuth2AuthenticationSuccessHandler(JwtTokenService jwtTokenService,
                                               UserRepository userRepository,
-                                              @Value("${app.frontend-url}") String frontendUrl,
-                                              @Value("${jwt.expiration}") long expirationSeconds) {
+                                              AppProperties props) {
         this.jwtTokenService = jwtTokenService;
         this.userRepository = userRepository;
-        this.frontendUrl = frontendUrl;
-        this.expirationSeconds = expirationSeconds;
+        this.frontendUrl = props.getFrontendUrl();
+        this.expirationSeconds = props.getJwt().getExpiration();
     }
 
     @Override

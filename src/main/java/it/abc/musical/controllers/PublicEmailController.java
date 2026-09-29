@@ -38,6 +38,6 @@ public class PublicEmailController {
                         .contentType(MediaType.IMAGE_JPEG)
                         .cacheControl(CACHE)
                         .body((Resource) new FileSystemResource(file)))
-                .orElseThrow(() -> new NotFoundException("Locandina non disponibile"));
+                .orElseThrow(() -> new NotFoundException("email.locandina.non.disponibile"));
     }
 }

@@ -1,8 +1,9 @@
 package it.abc.musical.security;
 
+import it.abc.musical.config.AppProperties;
 import it.abc.musical.entities.User;
 import it.abc.musical.util.AuthUtil;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -23,7 +24,12 @@ public class JwtTokenService {
     private final JwtEncoder jwtEncoder;
     private final String issuer;
 
-    public JwtTokenService(JwtEncoder jwtEncoder, @Value("${jwt.issuer}") String issuer) {
+    @Autowired
+    public JwtTokenService(JwtEncoder jwtEncoder, AppProperties props) {
+        this(jwtEncoder, props.getJwt().getIssuer());
+    }
+
+    public JwtTokenService(JwtEncoder jwtEncoder, String issuer) {
         this.jwtEncoder = jwtEncoder;
         this.issuer = issuer;
     }

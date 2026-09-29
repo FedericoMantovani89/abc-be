@@ -85,7 +85,7 @@ public class CommunicationService {
 
     private Communication active(Long id) {
         return communicationRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new NotFoundException("Comunicazione non trovata"));
+                .orElseThrow(() -> new NotFoundException("comunicazione.non.trovata"));
     }
 
     private void applyRequest(Communication communication, CommunicationUpsertRequest request, Long userId) {
@@ -93,7 +93,7 @@ public class CommunicationService {
         communication.setContent(request.content());
         communication.setCommunicationType(request.communicationTypeId() != null
                 ? communicationTypeRepository.findById(request.communicationTypeId())
-                        .orElseThrow(() -> new NotFoundException("Tipo comunicazione non trovato"))
+                        .orElseThrow(() -> new NotFoundException("comunicazione.tipo.non.trovato"))
                 : null);
         communication.setPriority(request.priority() != null ? request.priority() : "NORMAL");
         communication.setPinned(Boolean.TRUE.equals(request.pinned()));
