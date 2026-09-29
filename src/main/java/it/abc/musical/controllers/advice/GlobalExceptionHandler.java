@@ -10,6 +10,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -23,7 +24,7 @@ import java.util.Map;
 
 /**
  * Ogni risposta di errore e' {"error": "<messaggio italiano>", "code": "<codice stabile>"}
- * (piu' "fields" per la validazione): il frontend legge il codice, il messaggio resta per
+ * (piu' "fields" e "fieldCodes" per la validazione): il frontend legge il codice, il messaggio resta per
  * compatibilita'. I codici sono elencati in docs/codici-errore.md.
  */
 @Slf4j
@@ -48,11 +49,38 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<Map<String, Object>> validation(MethodArgumentNotValidException ex) {
         Map<String, String> fields = new LinkedHashMap<>();
-        ex.getBindingResult().getFieldErrors()
-                .forEach(fe -> fields.putIfAbsent(fe.getField(), fe.getDefaultMessage()));
+        Map<String, String> fieldCodes = new LinkedHashMap<>();
+        for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
+            if (fieldCodes.containsKey(fe.getField())) {
+                continue;
+            }
+            String fieldCode = fieldCode(fe);
+            fieldCodes.put(fe.getField(), fieldCode);
+            fields.put(fe.getField(), Messages.text(fieldCode, fieldArgs(fe)));
+        }
         String code = "errore.dati.non.validi";
-        return ResponseEntity.badRequest()
-                .body(Map.of("error", Messages.text(code), "code", code, "fields", fields));
+        return ResponseEntity.badRequest().body(Map.of("error", Messages.text(code), "code", code,
+                "fields", fields, "fieldCodes", fieldCodes));
+    }
+
+    /** Il codice del campo viene dal vincolo violato (@NotBlank, @Size...), non dal testo inglese. */
+    private static String fieldCode(FieldError fe) {
+        return switch (fe.getCode() == null ? "" : fe.getCode()) {
+            case "NotBlank", "NotNull", "NotEmpty" -> "validazione.obbligatorio";
+            case "Email" -> "validazione.email.non.valida";
+            case "Size" -> "validazione.lunghezza";
+            case "ValidPassword" -> "validazione.password";
+            default -> "validazione.valore.non.valido";
+        };
+    }
+
+    /** Per @Size il testo cita il massimo ({0}); gli argomenti del vincolo sono: campo, max, min. */
+    private static Object[] fieldArgs(FieldError fe) {
+        Object[] arguments = fe.getArguments();
+        if ("Size".equals(fe.getCode()) && arguments != null && arguments.length > 1) {
+            return new Object[] {arguments[1]};
+        }
+        return new Object[0];
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

@@ -5,7 +5,6 @@ import jakarta.validation.ConstraintValidatorContext;
 import org.passay.DefaultPasswordValidator;
 import org.passay.PasswordData;
 import org.passay.PasswordValidator;
-import org.passay.ValidationResult;
 import org.passay.data.EnglishCharacterData;
 import org.passay.rule.CharacterRule;
 import org.passay.rule.LengthRule;
@@ -30,17 +29,6 @@ public class PasswordConstraintValidator implements ConstraintValidator<ValidPas
 
     @Override
     public boolean isValid(String password, ConstraintValidatorContext context) {
-        if (password == null) {
-            return false;
-        }
-        ValidationResult result = VALIDATOR.validate(new PasswordData(password));
-        if (result.isValid()) {
-            return true;
-        }
-        context.disableDefaultConstraintViolation();
-        context.buildConstraintViolationWithTemplate(
-                "La password deve avere 8+ caratteri con maiuscole, minuscole, numeri e un simbolo"
-        ).addConstraintViolation();
-        return false;
+        return password != null && VALIDATOR.validate(new PasswordData(password)).isValid();
     }
 }
