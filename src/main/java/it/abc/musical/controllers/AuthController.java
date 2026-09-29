@@ -1,5 +1,6 @@
 package it.abc.musical.controllers;
 
+import it.abc.musical.config.AppProperties;
 import it.abc.musical.dto.AuthDtos.ForgotPasswordRequest;
 import it.abc.musical.dto.AuthDtos.RegisterRequest;
 import it.abc.musical.dto.AuthDtos.ResendVerificationRequest;
@@ -10,7 +11,6 @@ import it.abc.musical.security.JwtTokenService;
 import it.abc.musical.services.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -32,20 +32,13 @@ public class AuthController {
     private final UserService userService;
     private final JwtTokenService jwtTokenService;
 
-    @Value("${jwt.expiration}")
-    private long jwtExpiration;
-
-    @Value("${jwt.rememberme-expiration}")
-    private long jwtRememberMeExpiration;
-
-    @Value("${app.frontend-url}")
-    private String frontendUrl;
+    private final AppProperties props;
 
     /** Scambia la sessione autenticata (JSESSIONID) con un JWT. */
     @PostMapping("/token")
     public TokenResponse token(Authentication authentication,
                                @RequestParam(defaultValue = "false") boolean rememberMe) {
-        long expiration = rememberMe ? jwtRememberMeExpiration : jwtExpiration;
+        long expiration = rememberMe ? props.getJwt().getRemembermeExpiration() : props.getJwt().getExpiration();
         String token = jwtTokenService.generateToken(authentication, expiration);
         return new TokenResponse(token, "Bearer", expiration);
     }
@@ -60,9 +53,9 @@ public class AuthController {
     public RedirectView verify(@RequestParam String token) {
         try {
             userService.verifyEmail(token);
-            return new RedirectView(frontendUrl + "/login?verified=true");
+            return new RedirectView(props.getFrontendUrl() + "/login?verified=true");
         } catch (BadRequestException e) {
-            return new RedirectView(frontendUrl + "/login?verified=false");
+            return new RedirectView(props.getFrontendUrl() + "/login?verified=false");
         }
     }
 

@@ -149,17 +149,17 @@ public class CalendarService {
 
     private CalendarEvent activeEvent(Long id) {
         return calendarEventRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new NotFoundException("Evento calendario non trovato"));
+                .orElseThrow(() -> new NotFoundException("calendario.evento.non.trovato"));
     }
 
     private CalendarEventType requireType(Long id) {
         return calendarEventTypeRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Tipo evento non trovato"));
+                .orElseThrow(() -> new NotFoundException("calendario.tipo.non.trovato"));
     }
 
     private void applyRequest(CalendarEvent event, CalendarEventUpsertRequest request, Long userId) {
         if (request.endDatetime() != null && request.endDatetime().isBefore(request.startDatetime())) {
-            throw new BadRequestException("La data di fine precede la data di inizio");
+            throw new BadRequestException("calendario.fine.prima.inizio");
         }
         CalendarEventType type = request.eventTypeId() != null ? requireType(request.eventTypeId()) : null;
         // Validazione prima di toccare l'entita': un 400 non lascia modifiche a meta'.
@@ -168,7 +168,7 @@ public class CalendarService {
         if (type != null && type.isRehearsalType()) {
             show = request.showId() != null
                     ? showRepository.findByIdAndDeletedAtIsNull(request.showId())
-                            .orElseThrow(() -> new NotFoundException("Spettacolo non trovato"))
+                            .orElseThrow(() -> new NotFoundException("spettacolo.non.trovato"))
                     : null;
             rehearsalRoles = validRehearsalRoles(show, request.rehearsalRoles());
         }
@@ -200,14 +200,14 @@ public class CalendarService {
             return roles;
         }
         if (show == null) {
-            throw new BadRequestException("I ruoli della prova richiedono uno spettacolo");
+            throw new BadRequestException("calendario.ruoli.senza.spettacolo");
         }
         Map<String, String> castByLowerCase = showService.castRoles(show.getId()).stream()
                 .collect(Collectors.toMap(r -> r.toLowerCase(Locale.ITALIAN), Function.identity(), (a, b) -> a));
         for (String role : requested) {
             String canonical = role != null ? castByLowerCase.get(role.trim().toLowerCase(Locale.ITALIAN)) : null;
             if (canonical == null) {
-                throw new BadRequestException("Il ruolo \"" + role + "\" non esiste nel cast dello spettacolo");
+                throw new BadRequestException("calendario.ruolo.non.nel.cast", role);
             }
             roles.add(canonical);
         }

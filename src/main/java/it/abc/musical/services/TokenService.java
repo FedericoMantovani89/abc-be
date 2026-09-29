@@ -1,5 +1,6 @@
 package it.abc.musical.services;
 
+import it.abc.musical.config.AppProperties;
 import it.abc.musical.entities.Token;
 import it.abc.musical.entities.User;
 import it.abc.musical.exceptions.BadRequestException;
@@ -21,10 +22,9 @@ import java.util.Base64;
 public class TokenService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
-    private static final Duration VERIFICATION_VALIDITY = Duration.ofHours(24);
-    private static final Duration RESET_VALIDITY = Duration.ofHours(1);
 
     private final TokenRepository tokenRepository;
+    private final AppProperties props;
 
     @Transactional
     public Token createToken(User user, String tokenType) {
@@ -39,7 +39,8 @@ public class TokenService {
         token.setTokenType(tokenType);
         token.setTokenValue(Base64.getUrlEncoder().withoutPadding().encodeToString(bytes));
         Duration validity = Token.TYPE_EMAIL_VERIFICATION.equals(tokenType)
-                ? VERIFICATION_VALIDITY : RESET_VALIDITY;
+                ? Duration.ofHours(props.getLimits().getVerificationLinkHours())
+                : Duration.ofHours(props.getLimits().getResetLinkHours());
         token.setExpiresAt(LocalDateTime.now().plus(validity));
         return tokenRepository.save(token);
     }
@@ -47,12 +48,12 @@ public class TokenService {
     @Transactional
     public Token consumeToken(String tokenValue, String tokenType) {
         Token token = tokenRepository.findByTokenValueAndTokenType(tokenValue, tokenType)
-                .orElseThrow(() -> new BadRequestException("Token non valido"));
+                .orElseThrow(() -> new BadRequestException("auth.token.non.valido"));
         if (token.isUsed()) {
-            throw new BadRequestException("Token già utilizzato");
+            throw new BadRequestException("auth.token.gia.utilizzato");
         }
         if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("Token scaduto");
+            throw new BadRequestException("auth.token.scaduto");
         }
         token.setUsed(true);
         return tokenRepository.save(token);

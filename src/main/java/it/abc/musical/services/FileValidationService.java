@@ -54,8 +54,8 @@ public class FileValidationService {
     public void checkAllowed(String filename, long size, UploadTargetType target) {
         String extension = StorageService.extensionOf(filename);
         if (!FileTypeUtil.isAllowedExtension(extension)) {
-            throw new BadRequestException("Tipo di file .%s non consentito. Estensioni ammesse: %s"
-                    .formatted(extension, FileTypeUtil.allowedExtensionsList()));
+            throw new BadRequestException("file.estensione.non.consentita",
+                    extension, FileTypeUtil.allowedExtensionsList());
         }
         Category category = FileTypeUtil.categoryOf(extension);
         if (!target.allowedCategories().contains(category)) {
@@ -63,20 +63,17 @@ public class FileValidationService {
                     .sorted()
                     .map(FileTypeUtil::labelOf)
                     .collect(Collectors.joining(", "));
-            throw new BadRequestException(
-                    "Tipo di file .%s non consentito per questa destinazione: sono ammessi solo file di tipo %s."
-                            .formatted(extension, allowedLabels));
+            throw new BadRequestException("file.estensione.non.consentita.destinazione", extension, allowedLabels);
         }
         if (size <= 0) {
-            throw new BadRequestException("Dimensione file non valida");
+            throw new BadRequestException("file.dimensione.non.valida");
         }
         DataSize limit = SIZE_LIMITS.get(category);
         if (size > limit.toBytes()) {
             double sizeMb = size / 1024.0 / 1024.0;
-            throw new BadRequestException(String.format(Locale.ITALY,
-                    "File troppo grande: %s pesa %.2f MB, oltre il limite di %d MB per %s. "
-                            + "Riduci le dimensioni del file e riprova.",
-                    filename, sizeMb, limit.toMegabytes(), FileTypeUtil.labelOf(category)));
+            throw new BadRequestException("file.troppo.grande", filename,
+                    String.format(Locale.ITALY, "%.2f", sizeMb), String.valueOf(limit.toMegabytes()),
+                    FileTypeUtil.labelOf(category));
         }
     }
 
@@ -88,18 +85,15 @@ public class FileValidationService {
         try (InputStream in = file.getInputStream()) {
             detectedMime = detect(in);
         } catch (IOException e) {
-            throw new BadRequestException("File illeggibile");
+            throw new BadRequestException("file.illeggibile");
         }
 
         if (DANGEROUS_MIMES.contains(detectedMime)) {
-            throw new BadRequestException(
-                    ("Contenuto del file non consentito: rilevato come %s, non ammesso per motivi di sicurezza. "
-                            + "Carica un file diverso.").formatted(detectedMime));
+            throw new BadRequestException("file.contenuto.non.consentito", detectedMime);
         }
         Set<String> expected = FileTypeUtil.expectedMimes(extension);
         if (!expected.contains(detectedMime)) {
-            throw new BadRequestException(
-                    "Il contenuto del file non corrisponde all'estensione ." + extension);
+            throw new BadRequestException("file.contenuto.non.corrisponde", extension);
         }
         if ("zip".equals(extension)) {
             checkZip(file);
@@ -114,7 +108,7 @@ public class FileValidationService {
         try {
             content = file.getBytes();
         } catch (IOException e) {
-            throw new BadRequestException("File illeggibile");
+            throw new BadRequestException("file.illeggibile");
         }
         PdfContentRules.check(content);
     }
@@ -129,7 +123,7 @@ public class FileValidationService {
             }
             ZipContentRules.check(copy);
         } catch (IOException e) {
-            throw new BadRequestException("File illeggibile");
+            throw new BadRequestException("file.illeggibile");
         } finally {
             if (copy != null) {
                 try {
@@ -146,7 +140,7 @@ public class FileValidationService {
         try (InputStream in = Files.newInputStream(path)) {
             return detect(in);
         } catch (IOException e) {
-            throw new BadRequestException("File illeggibile");
+            throw new BadRequestException("file.illeggibile");
         }
     }
 

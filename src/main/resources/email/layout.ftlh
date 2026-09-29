@@ -1,0 +1,98 @@
+<#--
+  Scheletro comune delle email del sito (verifica, reset). Cambia solo la parte variabile:
+  titolo, testo di anteprima, sopratitolo, titolo grande, testo del tasto, indirizzo e nota.
+  Il paragrafo di apertura e' il contenuto annidato della macro. Valori da mettere in "model":
+  siteUrl, siteHost, logoUrl e, se c'e' una locandina, poster.band e poster.side.
+  I valori sono escapati in automatico (.ftlh): un nome con <script> arriva come testo.
+-->
+<#macro page title preheader eyebrow heading buttonLabel link note>
+<!DOCTYPE html>
+<html lang="it" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>${title}</title>
+<style>
+  /* Telefono: la locandina laterale sparisce, compare la fascia in alto. Chi ignora le media query
+     (Outlook desktop, Gmail app con account non Google) resta sul layout a due colonne. */
+  @media only screen and (max-width: 480px) {
+    .poster-side { display:none !important; width:0 !important; max-height:0 !important; overflow:hidden !important; }
+    .poster-band { display:table-row !important; max-height:none !important; }
+    .poster-band img { display:block !important; width:100% !important; height:auto !important; max-height:none !important; }
+    .head-text { width:100% !important; padding:8px 20px 22px 20px !important; }
+    .head-text-solo { padding:24px 20px 22px 20px !important; }
+    .head-cell { border-radius:0 !important; }
+    .body-pad { padding-left:20px !important; padding-right:20px !important; }
+    .h1 { font-size:24px !important; line-height:31px !important; }
+  }
+</style>
+</head>
+<body style="margin:0; padding:0; background-color:#F1F0F7; -webkit-text-size-adjust:100%;">
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#F1F0F7;">${preheader}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F1F0F7;">
+<tr><td align="center" style="padding:24px 12px;">
+  <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px; border-collapse:collapse;">
+<#if poster??>
+<!--[if !mso]><!-->
+<tr class="poster-band" style="display:none; max-height:0; overflow:hidden; mso-hide:all;"><td bgcolor="#0F0F23" style="background-color:#0F0F23; font-size:0; line-height:0; border-radius:8px 8px 0 0;">
+  <img src="${poster.band}" width="351" alt="" style="display:none; max-height:0; width:100%; height:auto; border:0; outline:none;">
+</td></tr>
+<!--<![endif]-->
+<#else>
+${""}
+</#if>
+    <!-- Testata scura: a sinistra logo e titolo, a destra la locandina gia' sfumata verso #0F0F23 -->
+    <tr><td<#if poster??> class="head-cell"</#if> bgcolor="#0F0F23" style="background-color:#0F0F23; border-radius:8px 8px 0 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<#if poster??>
+        <td class="head-text" width="380" valign="middle" style="width:380px; padding:28px 0 26px 32px; font-family:Georgia, 'Times New Roman', serif;">
+<#else>
+        <td class="head-text-solo" valign="middle" style="padding:28px 32px 26px 32px; font-family:Georgia, 'Times New Roman', serif;">
+</#if>
+          <a href="${siteUrl}" style="text-decoration:none;">
+            <img src="${logoUrl}" width="260" alt="ABC Musical Company" style="display:block; width:100%; max-width:260px; height:auto; border:0; outline:none; color:#FBBF24; font-family:Georgia, 'Times New Roman', serif; font-size:22px; font-weight:bold; line-height:30px;">
+          </a>
+          <p style="margin:26px 0 8px 0; font-family:'Arial Narrow', Arial, Helvetica, sans-serif; font-size:13px; line-height:18px; letter-spacing:3px; text-transform:uppercase; color:#FBBF24; font-weight:bold;">${eyebrow}</p>
+          <h1 class="h1" style="margin:0; font-family:Georgia, 'Times New Roman', serif; font-size:27px; line-height:35px; font-weight:bold; color:#F8FAFC;">${heading}</h1>
+        </td>
+<#if poster??>
+<td class="poster-side" width="220" valign="top" align="right" style="width:220px; font-size:0; line-height:0;">
+  <img src="${poster.side}" width="220" height="293" alt="" style="display:block; width:220px; height:293px; border:0; outline:none;">
+</td>
+<#else>
+${""}
+</#if>
+      </tr></table>
+    </td></tr>
+    <tr><td bgcolor="#CA8A04" style="background-color:#CA8A04; height:4px; line-height:4px; font-size:4px;">&nbsp;</td></tr>
+    <!-- Corpo chiaro -->
+    <tr><td class="body-pad" bgcolor="#FFFFFF" style="background-color:#FFFFFF; padding:32px 36px 12px 36px; font-family:Georgia, 'Times New Roman', serif; color:#1E1B4B;">
+      <p style="margin:0 0 16px 0; font-size:16px; line-height:26px; color:#1E1B4B;"><#nested></p>
+    </td></tr>
+    <tr><td class="body-pad" bgcolor="#FFFFFF" align="center" style="background-color:#FFFFFF; padding:8px 36px 28px 36px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:360px;">
+        <tr><td align="center" bgcolor="#CA8A04" style="background-color:#CA8A04; border-radius:6px;">
+          <a href="${link}" target="_blank" style="display:block; padding:17px 24px; font-family:'Arial Narrow', Arial, Helvetica, sans-serif; font-size:18px; line-height:22px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; color:#0F0F23; text-decoration:none; border-radius:6px;">${buttonLabel}</a>
+        </td></tr>
+      </table>
+    </td></tr>
+    <tr><td class="body-pad" bgcolor="#FFFFFF" style="background-color:#FFFFFF; padding:0 36px 32px 36px; font-family:Arial, Helvetica, sans-serif; color:#1E1B4B;">
+      <p style="margin:0 0 6px 0; font-size:13px; line-height:20px; color:#475569;">Se il tasto non funziona, copia e incolla questo indirizzo nel browser:</p>
+      <p style="margin:0 0 20px 0; font-size:13px; line-height:20px; word-break:break-all;"><a href="${link}" target="_blank" style="color:#1E40AF; text-decoration:underline;">${link}</a></p>
+      <p style="margin:0; font-size:13px; line-height:20px; color:#475569;">${note}</p>
+    </td></tr>
+    <tr><td bgcolor="#1E1B4B" style="background-color:#1E1B4B; padding:22px 36px; border-radius:0 0 8px 8px; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:19px; color:#CBD5E1; text-align:center;">
+      <strong style="color:#FBBF24; letter-spacing:1px;">ABC Musical Company</strong><br>
+      ABC &ndash; Attori Ballerini Cantanti APS &middot; Verona &middot; dal 1998<br>
+      <a href="${siteUrl}" style="color:#FBBF24; text-decoration:underline;">${siteHost}</a><br>
+      <span style="color:#94A3B8;">Hai ricevuto questa email perch&eacute; qualcuno ha usato il tuo indirizzo sul nostro sito. &Egrave; un messaggio automatico: non rispondere.</span>
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>
+</#macro>

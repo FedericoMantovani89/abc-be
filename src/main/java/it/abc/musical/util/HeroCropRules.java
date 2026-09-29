@@ -21,7 +21,7 @@ public final class HeroCropRules {
         boolean bothNull = x == null && y == null;
         boolean bothInRange = x != null && y != null && x >= 0 && x <= 100 && y >= 0 && y <= 100;
         if (!bothNull && !bothInRange) {
-            throw new BadRequestException("Punto focale non valido");
+            throw new BadRequestException("hero.punto.focale.non.valido");
         }
     }
 
@@ -31,7 +31,7 @@ public final class HeroCropRules {
      */
     public static void validateZoom(Integer desktop, Integer mobile) {
         if (!isValidZoom(desktop) || !isValidZoom(mobile)) {
-            throw new BadRequestException("Zoom non valido");
+            throw new BadRequestException("hero.zoom.non.valido");
         }
     }
 

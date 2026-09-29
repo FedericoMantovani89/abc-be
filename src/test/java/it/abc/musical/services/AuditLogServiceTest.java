@@ -8,7 +8,6 @@ import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -28,6 +27,9 @@ class AuditLogServiceTest extends IntegrationTestBase {
     @Autowired
     AuditLogRepository auditLogRepository;
 
+    @Autowired
+    it.abc.musical.config.AppProperties props;
+
     @PersistenceContext
     EntityManager entityManager;
 
@@ -35,7 +37,7 @@ class AuditLogServiceTest extends IntegrationTestBase {
     void setUp() {
         auditLogRepository.deleteAll();
         // Soglia forzata a 12 mesi, indipendentemente dal default di configurazione.
-        ReflectionTestUtils.setField(auditLogService, "retentionMonths", 12);
+        props.getAudit().setRetentionMonths(12);
     }
 
     /**

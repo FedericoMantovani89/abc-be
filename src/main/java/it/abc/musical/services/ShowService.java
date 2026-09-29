@@ -149,7 +149,7 @@ public class ShowService {
 
     private Show activeShow(Long id) {
         return showRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new NotFoundException("Spettacolo non trovato"));
+                .orElseThrow(() -> new NotFoundException("spettacolo.non.trovato"));
     }
 
     private void applyRequest(Show show, ShowUpsertRequest request, Long userId) {

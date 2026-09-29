@@ -1,12 +1,3 @@
-jwt:
-  secret: dGVzdC1zZWNyZXQtMzItYnl0ZXMtbG9uZy1mb3ItaHMyNTYhIQ==
-  expiration: 3600
-  rememberme-expiration: 2592000
-  issuer: abc-musical
-
-security:
-  remember-me-key: test-remember-me-key
-
 spring:
   security:
     oauth2:
@@ -32,6 +23,13 @@ management:
       enabled: false
 
 app:
+  jwt:
+    secret: dGVzdC1zZWNyZXQtMzItYnl0ZXMtbG9uZy1mb3ItaHMyNTYhIQ==
+    expiration: 3600
+    rememberme-expiration: 2592000
+    issuer: abc-musical
+  security:
+    remember-me-key: test-remember-me-key
   base-url: http://localhost:8080
   frontend-url: http://localhost:3000
   upload-dir: ${java.io.tmpdir}/abc-test-uploads

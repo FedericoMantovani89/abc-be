@@ -8,7 +8,6 @@ import it.abc.musical.security.Roles;
 import it.abc.musical.util.EmailAddresses;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,16 +26,13 @@ public class AdminSeeder implements ApplicationRunner {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
-
-    @Value("${app.admin.email:}")
-    private String adminEmail;
-
-    @Value("${app.admin.password:}")
-    private String adminPassword;
+    private final AppProperties props;
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        String adminEmail = props.getAdmin().getEmail();
+        String adminPassword = props.getAdmin().getPassword();
         if (adminEmail == null || adminEmail.isBlank()
                 || adminPassword == null || adminPassword.isBlank()) {
             log.info("ADMIN_EMAIL/ADMIN_PASSWORD non impostati: nessun admin creato");

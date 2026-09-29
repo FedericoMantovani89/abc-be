@@ -2,7 +2,6 @@ package it.abc.musical.config;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import it.abc.musical.security.JwtAuthoritiesConverter;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -20,7 +19,8 @@ public class JwtConfig {
 
     private final SecretKeySpec secretKeySpec;
 
-    public JwtConfig(@Value("${jwt.secret}") String secret) {
+    public JwtConfig(AppProperties props) {
+        String secret = props.getJwt().getSecret();
         if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalStateException("JWT_SECRET deve essere almeno 32 byte (256 bit)");
         }

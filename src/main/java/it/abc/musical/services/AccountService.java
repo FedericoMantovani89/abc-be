@@ -77,17 +77,17 @@ public class AccountService {
     private void requireCurrentPassword(User user, String currentPassword) {
         if (user.getPassword() != null
                 && (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPassword()))) {
-            throw new BadRequestException("Password attuale non corretta");
+            throw new BadRequestException("auth.password.attuale.errata");
         }
     }
 
     private User currentUser(Authentication authentication) {
         Long id = AuthUtil.userId(authentication);
         if (id == null) {
-            throw new BadRequestException("Utente non identificabile");
+            throw new BadRequestException("auth.utente.non.identificabile");
         }
         return userRepository.findById(id)
                 .filter(u -> u.getDeletedAt() == null)
-                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+                .orElseThrow(() -> new NotFoundException("utente.non.trovato"));
     }
 }

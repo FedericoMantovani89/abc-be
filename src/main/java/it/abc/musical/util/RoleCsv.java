@@ -52,7 +52,7 @@ public final class RoleCsv {
     public static void requireKnownRoles(Collection<String> roles, Predicate<String> exists) {
         for (String role : roles) {
             if (!exists.test(role)) {
-                throw new BadRequestException("Ruolo non valido: " + role);
+                throw new BadRequestException("ruolo.non.valido", role);
             }
         }
     }

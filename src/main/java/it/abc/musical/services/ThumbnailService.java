@@ -1,11 +1,12 @@
 package it.abc.musical.services;
 
+import it.abc.musical.config.AppProperties;
 import it.abc.musical.entities.Document;
 import it.abc.musical.enums.MediaFileType;
 import it.abc.musical.util.FileTypeUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
@@ -53,8 +54,12 @@ public class ThumbnailService {
     /** Chiavi gia' fallite da quando gira il processo: un video rovinato non tiene occupato ffmpeg a ogni richiesta. */
     private final Set<String> failed = ConcurrentHashMap.newKeySet();
 
-    public ThumbnailService(StorageService storageService,
-                            @Value("${app.thumbs.ffmpeg:ffmpeg}") String ffmpeg) {
+    @Autowired
+    public ThumbnailService(StorageService storageService, AppProperties props) {
+        this(storageService, props.getThumbs().getFfmpeg());
+    }
+
+    public ThumbnailService(StorageService storageService, String ffmpeg) {
         this.storageService = storageService;
         this.ffmpeg = ffmpeg;
     }
