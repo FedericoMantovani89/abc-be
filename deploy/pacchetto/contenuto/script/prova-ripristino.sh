@@ -40,14 +40,17 @@ chmod 600 "$ENVTMP"
 pulisci() {
   docker rm -f "$PG" >/dev/null 2>&1 || true
   docker network rm "$RETE" >/dev/null 2>&1 || true
-  rm -rf "$TMP" "$ENVTMP"
+  # contiene un dump con DATI PERSONALI: va cancellato davvero (con sudo se serve) e lo si dice se non riesce
+  rm -f "$ENVTMP"
+  rimuovi_cartella "$TMP" || avviso "ATTENZIONE: nella cartella $TMP resta una copia del database con dati personali: cancellala subito."
+  return 0
 }
 trap 'pulisci' EXIT
 trap '_se_errore $LINENO' ERR
 printf 'RESTIC_REPOSITORY=%s\nRESTIC_PASSWORD=%s\nBACKUP_SSH_PORTA=%s\n' "$REPO" "$PASSWORD" "$(leggi_env "$ENV_FILE" BACKUP_SSH_PORTA)" > "$ENVTMP"
 
 passo "2/6 Scarico l'ultimo backup (senza i file caricati)"
-docker run --rm --env-file "$ENVTMP" -v "$CARTELLA_SITO/segreti:/segreti" -v "$TMP:/ripristino" \
+docker run --rm --env-file "$ENVTMP" -e RIPRISTINO_PROPRIETARIO="$(id -u):$(id -g)" -v "$CARTELLA_SITO/segreti:/segreti" -v "$TMP:/ripristino" \
   --entrypoint /backup/ripristina.sh "$IMG_BACKUP" /ripristino --prova
 DUMP="$TMP/db/abc.dump"
 REG_FILE="$TMP/file/dati/registro-cancellazioni/utenti-cancellati.txt"

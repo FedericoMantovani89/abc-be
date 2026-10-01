@@ -100,21 +100,31 @@ function Problema($testo) {
   }
 }
 
+# I programmi nativi (git, docker, tar) scrivono messaggi di avanzamento sul canale degli errori. Con
+# $ErrorActionPreference = 'Stop' Windows PowerShell 5.1 trasforma la prima di quelle righe in un errore
+# che ferma lo script, ma SOLO quando l'uscita viene registrata (pipe o redirezione su file). Per questo
+# ogni chiamata nativa gira con 'Continue' e il risultato si controlla con $LASTEXITCODE (come up.ps1).
 function InvocaGit([string]$repo, [string[]]$argomenti) {
+  $ErrorActionPreference = 'Continue'
   $out = & git -C $repo @argomenti
   if ($LASTEXITCODE -ne 0) { throw "git $($argomenti -join ' ') ha fallito in $repo" }
   return $out
 }
 function InvocaGitSilenzioso([string]$repo, [string[]]$argomenti) {
   # per i comandi che possono "fallire" senza essere un errore (tag mancante): restituisce $null
+  $ErrorActionPreference = 'Continue'
   $out = & git -C $repo @argomenti 2>$null
   if ($LASTEXITCODE -ne 0) { return $null }
   return $out
 }
 function Esegui([string]$descrizione, [scriptblock]$comando) {
   Info $descrizione
+  # 'Continue' solo attorno alla chiamata nativa (vedi sopra); poi si controlla il codice di uscita.
+  $ErrorActionPreference = 'Continue'
   & $comando
-  if ($LASTEXITCODE -ne 0) { throw "Comando fallito ($descrizione), codice $LASTEXITCODE" }
+  $codice = $LASTEXITCODE
+  $ErrorActionPreference = 'Stop'
+  if ($codice -ne 0) { throw "Comando fallito ($descrizione), codice $codice" }
 }
 
 # ---------------------------------------------------------------- controlli sui repository
@@ -236,6 +246,99 @@ function CopiaNelPacchetto([string]$src, [string]$destAssoluto) {
   else { ScriviTesto $destAssoluto ([System.IO.File]::ReadAllText($src)) }
 }
 
+# ---------------------------------------------------------------- elenco delle chiavi di testi.json / sito.json
+# Il Referente non ha il codice di abc-fe: l'elenco delle chiavi (con i valori originali) si GENERA da
+# lib/testi/it.ts e lib/testi/sito.ts e si mette nel pacchetto come CHIAVI-DISPONIBILI.md. Non si copia a mano.
+function EstraiChiavi([string]$file, [string]$inizio) {
+  if (-not (Test-Path $file -PathType Leaf)) { throw "Non trovo $file: non posso generare l'elenco delle chiavi." }
+  $pila = New-Object System.Collections.Generic.List[string]
+  $risultato = New-Object System.Collections.Generic.List[object]
+  $dentro = $false
+  $inElenco = $false
+  $chiave = "(?:([A-Za-z_][A-Za-z0-9_]*)|'([^']+)')"
+  foreach ($r in [System.IO.File]::ReadAllLines($file)) {
+    if (-not $dentro) { if ($r -match $inizio) { $dentro = $true }; continue }
+    if ($inElenco) { if ($r -match '^\s*\],?\s*(//.*)?$') { $inElenco = $false }; continue }
+    if ($r -match '^\s*\},?\s*(//.*)?$') {
+      if ($pila.Count -eq 0) { break }
+      $pila.RemoveAt($pila.Count - 1)
+      continue
+    }
+    if ($r -match "^\s*${chiave}:\s*\{\s*(//.*)?$") {
+      $pila.Add($(if ($Matches[1]) { $Matches[1] } else { $Matches[2] }))
+      continue
+    }
+    if ($r -match "^\s*${chiave}:\s*\[\s*(//.*)?$") {
+      $nome = $(if ($Matches[1]) { $Matches[1] } else { $Matches[2] })
+      $risultato.Add([pscustomobject]@{ Chiave = (($pila + $nome) -join '.'); Valore = '(elenco di paragrafi o voci: se lo cambi, riscrivilo per intero)' })
+      $inElenco = $true
+      continue
+    }
+    if ($r -match "^\s*${chiave}:\s*\[(.*)\],?\s*(//.*)?$") {
+      $nome = $(if ($Matches[1]) { $Matches[1] } else { $Matches[2] })
+      $risultato.Add([pscustomobject]@{ Chiave = (($pila + $nome) -join '.'); Valore = "(elenco) $($Matches[3])" })
+      continue
+    }
+    if ($r -match "^\s*${chiave}:\s*(?:'((?:[^'\]|\.)*)'|""((?:[^""\]|\.)*)"")\s*,?\s*(//.*)?$") {
+      $nome = $(if ($Matches[1]) { $Matches[1] } else { $Matches[2] })
+      $valore = $(if ($null -ne $Matches[3]) { $Matches[3] } else { $Matches[4] })
+      $risultato.Add([pscustomobject]@{ Chiave = (($pila + $nome) -join '.'); Valore = $valore.Replace("\'", "'") })
+    }
+  }
+  return , $risultato.ToArray()
+}
+
+function ElencoChiaviMarkdown([string]$radiceFe) {
+  $testi = EstraiChiavi (Join-Path $radiceFe 'lib\testi\it.ts') '^export const it\b.*=\s*\{\s*$'
+  $sito = EstraiChiavi (Join-Path $radiceFe 'lib\testi\sito.ts') '^export const sitoPredefinito\b.*=\s*\{\s*$'
+  if ($testi.Count -lt 100) { throw "Ho trovato solo $($testi.Count) chiavi in lib/testi/it.ts: il formato del file e' cambiato, aggiorna EstraiChiavi in crea-pacchetto.ps1." }
+  if ($sito.Count -lt 8) { throw "Ho trovato solo $($sito.Count) chiavi in lib/testi/sito.ts: il formato del file e' cambiato, aggiorna EstraiChiavi in crea-pacchetto.ps1." }
+  $m = New-Object System.Text.StringBuilder
+  [void]$m.AppendLine('# Chiavi che si possono personalizzare')
+  [void]$m.AppendLine('')
+  [void]$m.AppendLine('Elenco GENERATO dal codice del sito (non scritto a mano), con i valori originali. Vedi PERSONALIZZARE.md per come usarlo.')
+  [void]$m.AppendLine('')
+  [void]$m.AppendLine('Nei file `testi.json` e `sito.json` le chiavi con il punto sono annidate: `auth.accedi` si scrive')
+  [void]$m.AppendLine('`{ "auth": { "accedi": "Entra" } }`. I segnaposto come `{nome}` vanno lasciati dove sono.')
+  [void]$m.AppendLine('')
+  [void]$m.AppendLine('## sito.json (dati dell''associazione)')
+  [void]$m.AppendLine('')
+  foreach ($x in $sito) { [void]$m.AppendLine("- ``$($x.Chiave)``: $($x.Valore)") }
+  [void]$m.AppendLine('')
+  [void]$m.AppendLine('## testi.json (testi dell''interfaccia)')
+  $sezione = ''
+  foreach ($x in $testi) {
+    $prima = $x.Chiave.Split('.')[0]
+    if ($prima -ne $sezione) {
+      $sezione = $prima
+      [void]$m.AppendLine('')
+      [void]$m.AppendLine("### $sezione")
+      [void]$m.AppendLine('')
+    }
+    $v = $x.Valore
+    if ($v.Length -gt 110) { $v = $v.Substring(0, 107) + '...' }
+    [void]$m.AppendLine("- ``$($x.Chiave)``: $v")
+  }
+  return @{ Testo = $m.ToString(); Testi = $testi.Count; Sito = $sito.Count }
+}
+
+# PERSONALIZZARE.md nasce in abc-fe e parla del codice sorgente: nel pacchetto si correggono i riferimenti.
+function AdattaPersonalizzare([string]$testo) {
+  # Modelli a espressione regolare (il file e' in italiano con accenti; qui solo ASCII: '.' prende la lettera accentata).
+  $sost = @(
+    @('I valori originali sono in `lib/testi/it\.ts` \(testi\) e `lib/testi/sito\.ts` \(dati\): da l. si copiano\s+i nomi delle chiavi\.',
+      'L''elenco di TUTTE le chiavi, con i valori originali, e'' nel file `CHIAVI-DISPONIBILI.md` (nella cartella del sito, `/opt/abc-sito`): da li'' si copiano i nomi.'),
+    @('\(nel Docker: `docker compose restart frontend`\)', '(sul server: `bash /opt/abc-sito/script/riavvia.sh frontend`)'),
+    @('`docker compose logs frontend`', '`bash /opt/abc-sito/script/registri.sh frontend`')
+  )
+  foreach ($x in $sost) {
+    if (-not [regex]::IsMatch($testo, $x[0])) { throw "PERSONALIZZARE.md e' cambiato: non trovo il testo da correggere ($($x[0])). Aggiorna AdattaPersonalizzare in crea-pacchetto.ps1." }
+    $testo = [regex]::Replace($testo, $x[0], $x[1].Replace('$', '$$'))
+  }
+  # il rimando al file dei codici di errore non e' nel pacchetto (se c'e' ancora, si toglie)
+  return [regex]::Replace($testo, ' \(elenco in `abc-be/docs/codici-errore\.md`\)', '')
+}
+
 function ComprimiGzip([string]$origine, [string]$destinazione) {
   $in = [System.IO.File]::OpenRead($origine)
   try {
@@ -271,8 +374,11 @@ foreach ($p in 'git', 'tar') {
   if (Get-Command $p -ErrorAction SilentlyContinue) { Ok "$p presente" } else { Problema "Manca il programma '$p'." }
 }
 if (Get-Command docker -ErrorAction SilentlyContinue) {
+  $ErrorActionPreference = 'Continue'
   & docker version --format '{{.Server.Version}}' *> $null
-  if ($LASTEXITCODE -eq 0) { Ok 'docker risponde' }
+  $codiceDocker = $LASTEXITCODE
+  $ErrorActionPreference = 'Stop'
+  if ($codiceDocker -eq 0) { Ok 'docker risponde' }
   elseif ($ProvaASecco) { Info 'docker non risponde adesso (in prova a secco non serve, per il pacchetto vero si)' }
   else { Problema "Docker Desktop non e' avviato." }
 } else { Problema "Manca il programma 'docker'." }
@@ -300,6 +406,11 @@ ControllaPresenza $mappaProva
 $mappaEsistenti = @($mappaProva | Where-Object { Test-Path $_.Src -PathType Leaf })
 CercaSegreti 'file da consegnare' $mappaEsistenti
 CercaSegreti 'cartelle sorgente del pacchetto (contenuto/ e caddy/)' (FileDiCartelle @((Join-Path $RepoBackend 'deploy\pacchetto\contenuto'), (Join-Path $RepoBackend 'deploy\caddy')))
+# l'elenco delle chiavi di personalizzazione si genera da abc-fe: se non si riesce, il pacchetto sarebbe incompleto
+try {
+  $chiaviProva = ElencoChiaviMarkdown $RepoFrontend
+  Ok "elenco chiavi generabile da abc-fe ($($chiaviProva.Testi) testi, $($chiaviProva.Sito) dati del sito)"
+} catch { Problema "elenco delle chiavi: $($_.Exception.Message)" }
 # nessun .env o chiave nel codice dei due repo (anche tra i file ignorati da git)
 foreach ($r in @(@('abc-be', $RepoBackend), @('abc-fe', $RepoFrontend))) {
   if (Test-Path $r[1]) {
@@ -337,6 +448,7 @@ if ($ProvaASecco) {
   Simulo "docker save + gzip -> immagini/abc-backend-$Versione.tar.gz, abc-frontend-$Versione.tar.gz, abc-backup-$Versione.tar.gz, caddy.tar.gz, postgres.tar.gz"
   Simulo "copio nel pacchetto ($($mappaProva.Count) file):"
   foreach ($m in $mappaProva) { Info "    $($m.Dest)" }
+  Simulo "genero CHIAVI-DISPONIBILI.md da lib/testi/it.ts e sito.ts di abc-fe e correggo i rimandi di PERSONALIZZARE.md"
   Simulo "scrivo versione.env (VERSIONE=$Versione, CAMBIA_DATABASE=$cambiaDb), NOTE-DI-RILASCIO.md, MANIFEST.txt (versione, commit dei due repo, data)"
   Simulo "rifaccio la ricerca di segreti sul pacchetto assemblato (compresi gli script e i documenti)"
   Simulo "calcolo gli hash SHA-256 di tutti i file -> SHA256SUMS.txt"
@@ -372,8 +484,11 @@ try {
     $tarFile = Join-Path $Esportazioni ($x[0] + '.tar')
     New-Item -ItemType Directory -Path $x[2] -Force | Out-Null
     InvocaGit $x[1] @('archive', '--format=tar', '-o', $tarFile, $Versione) | Out-Null
+    $ErrorActionPreference = 'Continue'
     & tar -xf $tarFile -C $x[2]
-    if ($LASTEXITCODE -ne 0) { throw "tar non e' riuscito a estrarre $tarFile" }
+    $codiceTar = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
+    if ($codiceTar -ne 0) { throw "tar non e' riuscito a estrarre $tarFile" }
     Remove-Item $tarFile -Force
     Ok "$($x[0]) esportato dal tag $Versione"
   }
@@ -416,6 +531,11 @@ try {
   Titolo '11. Copio i file nel pacchetto'
   foreach ($m in $mappa) { CopiaNelPacchetto $m.Src (Join-Path $radice ($m.Dest.Replace('/', '\'))) }
   Ok "$($mappa.Count) file copiati"
+  $chiavi = ElencoChiaviMarkdown $srcFe
+  ScriviTesto (Join-Path $radice 'CHIAVI-DISPONIBILI.md') $chiavi.Testo
+  $fileP = Join-Path $radice 'PERSONALIZZARE.md'
+  ScriviTesto $fileP (AdattaPersonalizzare ([System.IO.File]::ReadAllText($fileP)))
+  Ok "CHIAVI-DISPONIBILI.md generato ($($chiavi.Testi) testi, $($chiavi.Sito) dati del sito); PERSONALIZZARE.md adattato al pacchetto"
   ScriviTesto (Join-Path $radice 'versione.env') ("VERSIONE=$Versione`nCAMBIA_DATABASE=$cambiaDb`nDATA_PACCHETTO=$($Data.ToString('yyyy-MM-dd'))`n")
 
   # note di rilascio

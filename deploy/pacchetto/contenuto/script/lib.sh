@@ -164,6 +164,20 @@ attendi_sito_sano() {
   return 1
 }
 
+# Il file del registro cancellazioni deve restare di deploy (lo riscrive anche il container backup,
+# che gira come root). Se e' rimasto di root (versioni vecchie) lo si rimette a posto con sudo.
+sistema_registro() {
+  local d f; d="$(dati_dir)/registro-cancellazioni"; f="$d/utenti-cancellati.txt"
+  mkdir -p "$d" 2>/dev/null || come_root mkdir -p "$d"
+  if [ ! -w "$d" ] || { [ -e "$f" ] && { [ ! -r "$f" ] || [ ! -w "$f" ]; }; }; then
+    come_root chown -R "$(id -u):$(id -g)" "$d"
+    come_root chmod -R u+rwX,go+rX "$d"
+  fi
+}
+
+# Una riga sola per riaccendere/spegnere: serve nei messaggi d'errore.
+RIGA_MANUTENZIONE_OFF="sh $CARTELLA_SITO/caddy/manutenzione.sh off"
+
 manutenzione() { sh "$CARTELLA_SITO/caddy/manutenzione.sh" "$1"; }
 
 # Aspetta che Postgres (quello del sito) accetti connessioni.

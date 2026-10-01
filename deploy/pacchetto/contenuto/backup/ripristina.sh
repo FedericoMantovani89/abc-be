@@ -7,6 +7,14 @@ set -Eeuo pipefail
 . "$(dirname "$0")/comune.sh"
 
 DEST="${1:?uso: ripristina.sh CARTELLA_DI_DESTINAZIONE [--prova]}"
+# Questo container gira come root: se chi lo lancia passa RIPRISTINO_PROPRIETARIO (uid:gid), alla fine
+# (anche in caso di errore) tutto cio' che e' stato scaricato torna suo, cosi' puo' spostarlo e cancellarlo senza sudo.
+rimetti_proprietario() {
+  if [ -n "${RIPRISTINO_PROPRIETARIO:-}" ]; then
+    chown -R "$RIPRISTINO_PROPRIETARIO" "$DEST" 2>/dev/null || true
+  fi
+}
+trap rimetti_proprietario EXIT
 PROVA=0
 [ "${2:-}" = "--prova" ] && PROVA=1
 controlla_configurazione || exit 1
