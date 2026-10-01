@@ -1,0 +1,30 @@
+# Caddyfile di PRODUZIONE del sito ABC. Certificati HTTPS (Let's Encrypt) automatici.
+# Dominio preconfigurato: www.attoriballerinicantanti.it
+# Pagina "sito non disponibile" e manutenzione (snippet abc_sito)
+import /etc/caddy/abc-sito.caddy
+
+# Il dominio senza www rimanda a www
+attoriballerinicantanti.it {
+	redir https://www.attoriballerinicantanti.it{uri} permanent
+}
+
+www.attoriballerinicantanti.it {
+	# caricamenti fino a 105 MB (come il backend)
+	request_body {
+		max_size 105MB
+	}
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "SAMEORIGIN"
+		-Server
+	}
+	# Registro delle richieste sullo standard output: lo raccoglie journald (max 14 giorni)
+	log {
+		output stdout
+	}
+	# Caddy parla SOLO con il frontend; il backend non e' mai esposto
+	import abc_sito frontend:3000
+}

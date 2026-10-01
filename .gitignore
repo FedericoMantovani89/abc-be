@@ -16,3 +16,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.iml
+
+# Pacchetto di installazione: l'esempio vuoto dei segreti si versiona
+!deploy/pacchetto/contenuto/.env.esempio
