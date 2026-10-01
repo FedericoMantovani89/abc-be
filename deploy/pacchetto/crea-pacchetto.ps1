@@ -174,6 +174,17 @@ function CercaSegreti([string]$descrizione, [object[]]$file) {
   } else { Ok "${descrizione}: nessun segreto, nessuna chiave, nessun file di dati reali ($($file.Count) file controllati)" }
 }
 
+# Tutti i file di una cartella sorgente (anche quelli che NON verrebbero copiati): un .env dimenticato li' dentro e' gia' un errore.
+function FileDiCartelle([string[]]$cartelle) {
+  $r = New-Object System.Collections.Generic.List[object]
+  foreach ($c in $cartelle) {
+    if (Test-Path $c) {
+      Get-ChildItem $c -Recurse -File -Force | ForEach-Object { $r.Add([pscustomobject]@{ Dest = $_.FullName; Src = $_.FullName }) }
+    }
+  }
+  return , $r.ToArray()
+}
+
 # Elenco dei file che entrano nel pacchetto: @{ Dest = percorso nel pacchetto; Src = file sorgente }
 function MappaSorgenti([string]$radiceBe, [string]$radiceFe) {
   $c = Join-Path $radiceBe 'deploy\pacchetto\contenuto'
@@ -288,6 +299,7 @@ $mappaProva = MappaSorgenti $RepoBackend $RepoFrontend
 ControllaPresenza $mappaProva
 $mappaEsistenti = @($mappaProva | Where-Object { Test-Path $_.Src -PathType Leaf })
 CercaSegreti 'file da consegnare' $mappaEsistenti
+CercaSegreti 'cartelle sorgente del pacchetto (contenuto/ e caddy/)' (FileDiCartelle @((Join-Path $RepoBackend 'deploy\pacchetto\contenuto'), (Join-Path $RepoBackend 'deploy\caddy')))
 # nessun .env o chiave nel codice dei due repo (anche tra i file ignorati da git)
 foreach ($r in @(@('abc-be', $RepoBackend), @('abc-fe', $RepoFrontend))) {
   if (Test-Path $r[1]) {
@@ -370,6 +382,7 @@ try {
   $mappa = MappaSorgenti $srcBe $srcFe
   ControllaPresenza $mappa
   CercaSegreti 'file da consegnare (dal tag)' $mappa
+  CercaSegreti 'cartelle sorgente del pacchetto (dal tag)' (FileDiCartelle @((Join-Path $srcBe 'deploy\pacchetto\contenuto'), (Join-Path $srcBe 'deploy\caddy')))
   $tuttiEsportati = @(Get-ChildItem $Esportazioni -Recurse -File -Force | Where-Object { $_.Name -match '^\.env($|\.)' -and $_.Name -notin @('.env.example', '.env.esempio') })
   if ($tuttiEsportati.Count -gt 0) { Problema "Nel codice del tag ci sono file .env: $($tuttiEsportati.FullName -join ', ')" } else { Ok 'nessun file .env nel codice del tag' }
 
