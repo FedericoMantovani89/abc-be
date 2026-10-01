@@ -59,7 +59,7 @@ riapplica() {
     return 0
   fi
   massimo="$(solo_numeri < "$FILE_REGISTRO" | sort -n | tail -n 1)"
-  # Stessa anonimizzazione di AccountService.deleteAccount (piu' immagine del profilo),
+  # Stessa anonimizzazione di AccountService.deleteAccount (colonne di users verificate fino alla V012),
   # sulle sole righe che esistono. Poi si toglie ogni token e si impedisce che questi ID
   # vengano riassegnati a utenti nuovi.
   sql <<SQL
@@ -73,7 +73,7 @@ UPDATE users
        last_name = NULL,
        oauth_provider = NULL,
        oauth_id = NULL,
-       profile_picture_url = NULL
+       updated_at = now()
  WHERE id IN ($ids);
 DELETE FROM tokens WHERE user_id IN ($ids);
 SELECT setval('users_id_seq', GREATEST((SELECT last_value FROM users_id_seq), $massimo));
