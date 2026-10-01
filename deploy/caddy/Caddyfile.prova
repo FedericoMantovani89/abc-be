@@ -1,0 +1,10 @@
+# Prova locale dello snippet (NON e' il Caddyfile di produzione): porta 8088 senza HTTPS.
+# docker run --rm -p 8088:8088 -v <questa cartella>:/etc/caddy/prova -v <questa cartella>/pagine:/srv/abc-pagine \
+#   caddy:2-alpine caddy run --config /etc/caddy/prova/Caddyfile.prova
+{
+	auto_https off
+}
+import /etc/caddy/prova/abc-sito.caddy
+:8088 {
+	import abc_sito host.docker.internal:3100
+}
