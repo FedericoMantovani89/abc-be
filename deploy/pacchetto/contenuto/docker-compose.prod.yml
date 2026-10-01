@@ -38,6 +38,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./caddy/abc-sito.caddy:/etc/caddy/abc-sito.caddy:ro
+      - ./caddy/tls:/etc/caddy/tls:ro
       # pagina "sito non disponibile" e file MANUTENZIONE (lo accende/spegne caddy/manutenzione.sh)
       - ./caddy/pagine:/srv/abc-pagine:ro
       - ${DATI_DIR:-/mnt/abc-dati}/caddy/data:/data

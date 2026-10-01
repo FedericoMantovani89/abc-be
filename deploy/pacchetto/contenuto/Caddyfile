@@ -5,10 +5,14 @@ import /etc/caddy/abc-sito.caddy
 
 # Il dominio senza www rimanda a www
 attoriballerinicantanti.it {
+	import /etc/caddy/tls/*.caddy
 	redir https://www.attoriballerinicantanti.it{uri} permanent
 }
 
 www.attoriballerinicantanti.it {
+	# Prova prima del passaggio del DNS: se esiste caddy/tls/prova.caddy (lo crea https-prova.sh on)
+	# il sito usa un certificato interno invece di quello di Let's Encrypt. Se la cartella e' vuota non succede nulla.
+	import /etc/caddy/tls/*.caddy
 	# caricamenti fino a 105 MB (come il backend)
 	request_body {
 		max_size 105MB
