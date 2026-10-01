@@ -95,11 +95,45 @@ controlla_env() {
 }
 
 # Controlla gli hash SHA256 dei file del pacchetto (SHA256SUMS.txt).
+# Distingue "non riesco a controllare" (programma o file di controllo che non funziona) da "file diverso".
 controlla_hash_pacchetto() {
+  local uscita codice=0
   [ -f "$PACCHETTO/SHA256SUMS.txt" ] || fermati "Manca SHA256SUMS.txt: il pacchetto e' incompleto. Riscaricalo."
-  ( cd "$PACCHETTO" && sha256sum --quiet -c SHA256SUMS.txt ) \
-    || fermati "Un file del pacchetto e' diverso dall'originale (hash non corrispondente). Riscarica lo zip e controlla l'impronta SHA-256."
+  command -v sha256sum >/dev/null 2>&1 || fermati "Non riesco a controllare il pacchetto: manca il programma sha256sum su questo server."
+  uscita="$(cd "$PACCHETTO" && sha256sum -c SHA256SUMS.txt 2>&1)" || codice=$?
+  if [ "$codice" -ne 0 ]; then
+    if printf '%s
+' "$uscita" | grep -q ': FAILED'; then
+      printf '%s
+' "$uscita" | grep -E 'FAILED|No such file' | head -n 5 >&2
+      fermati "Un file del pacchetto e' diverso dall'originale (hash non corrispondente). Riscarica lo zip e controlla l'impronta SHA-256."
+    fi
+    printf '%s
+' "$uscita" | head -n 5 >&2
+    fermati "Non riesco a controllare il pacchetto (sha256sum ha dato un errore, ma non risulta nessun file diverso). Controlla SHA256SUMS.txt o riscarica lo zip."
+  fi
   ok "tutti i file del pacchetto corrispondono agli hash"
+}
+
+# come_root COMANDO...: lo esegue come root (l'utente deploy ha sudo senza password da prepara-server.sh).
+come_root() {
+  if [ "$(id -u)" -eq 0 ]; then "$@"; else sudo -n "$@"; fi
+}
+
+# rimuovi_cartella CARTELLA: la cancella anche se dentro ci sono file di root (restic, container backup).
+# Non fa fallire lo script: se non ci riesce lo dice e dice come fare a mano.
+rimuovi_cartella() {
+  local c=$1
+  [ -e "$c" ] || return 0
+  rm -rf "$c" 2>/dev/null && return 0
+  come_root rm -rf "$c" 2>/dev/null && return 0
+  avviso "Non sono riuscito a cancellare $c. Cancellala tu:  sudo rm -rf $c"
+  return 1
+}
+
+# sposta_cartella DA A: mv, con sudo se le cartelle appartengono a un altro utente (uploads: utente del backend).
+sposta_cartella() {
+  mv "$1" "$2" 2>/dev/null || come_root mv "$1" "$2"
 }
 
 carica_immagini() {
@@ -113,12 +147,13 @@ carica_immagini() {
 }
 
 # Aspetta che backend e frontend rispondano (massimo 4 minuti).
+# Si usa 127.0.0.1 e NON localhost: nel container "localhost" puo' risolvere su ::1, dove Next non ascolta.
 attendi_sito_sano() {
   local i stato
   info "aspetto che il sito si avvii (puo' servire 1-2 minuti) ..."
   for i in $(seq 1 48); do
     stato=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$(dc ps -q backend)" 2>/dev/null || echo "assente")
-    if [ "$stato" = "healthy" ] && dc exec -T frontend wget -q -O /dev/null http://localhost:3000/ 2>/dev/null; then
+    if [ "$stato" = "healthy" ] && dc exec -T frontend wget -q -O /dev/null http://127.0.0.1:3000/ 2>/dev/null; then
       ok "backend e frontend rispondono"
       return 0
     fi

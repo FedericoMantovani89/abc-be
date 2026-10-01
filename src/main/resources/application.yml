@@ -111,6 +111,8 @@ management:
     health:
       show-details: never
       show-components: never
+      # i gruppi sotto non devono impedire l'avvio se un indicatore e' spento (es. management.health.mail.enabled=false)
+      validate-group-membership: false
       group:
         # Usato dall'healthcheck del compose: SOLO cio' che serve perche' il sito stia in piedi.
         # La posta resta fuori: un guasto di Aruba non deve fermare backend, frontend e Caddy.

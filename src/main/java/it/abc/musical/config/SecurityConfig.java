@@ -8,6 +8,7 @@ import it.abc.musical.security.CustomOidcUserService;
 import it.abc.musical.security.CustomUserDetailsService;
 import it.abc.musical.security.OAuth2AuthenticationSuccessHandler;
 import it.abc.musical.security.RateLimitingFilter;
+import it.abc.musical.security.SocialProviderGuardFilter;
 import it.abc.musical.security.Roles;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -20,6 +21,7 @@ import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
@@ -48,6 +50,7 @@ public class SecurityConfig {
     private final CustomOidcUserService customOidcUserService;
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtAuthenticationConverter jwtAuthenticationConverter;
+    private final SocialLoginConfig.SocialProviders socialProviders;
 
     private final AppProperties props;
 
@@ -56,6 +59,7 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(new SocialProviderGuardFilter(socialProviders, props.getFrontendUrl()), OAuth2AuthorizationRequestRedirectFilter.class)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/login/oauth2/code/*", "/oauth2/authorization/*").permitAll()
                 .requestMatchers(publicUploadPatterns()).permitAll()
