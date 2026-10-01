@@ -16,9 +16,11 @@ name: abc-sito
 
 # Registri dei servizi: li raccoglie journald, che il server tiene al massimo 14 giorni
 # (impostato da prepara-server.sh). I registri contengono indirizzi IP ed email.
+# Su una macchina SENZA systemd (per esempio una prova dentro un container) journald impedisce
+# l'avvio: nel .env scrivi LOG_DRIVER=json-file. Su Ubuntu non toccare nulla.
 x-registri: &registri
   logging:
-    driver: journald
+    driver: ${LOG_DRIVER:-journald}
     options:
       tag: "abc-{{.Name}}"
 
@@ -117,7 +119,10 @@ services:
       - ${DATI_DIR:-/mnt/abc-dati}/uploads:/var/data/uploads
       - ${DATI_DIR:-/mnt/abc-dati}/config:/config:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/actuator/health || exit 1"]
+      # Controlla il gruppo di salute "sito" (programma + database), NON la posta: se Aruba non risponde
+      # il sito deve restare in piedi. Lo stato della posta: compose.sh exec backend wget -qO- http://127.0.0.1:8080/actuator/health/posta
+      # (127.0.0.1 e non localhost: nel container localhost puo' risolvere su ::1)
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/actuator/health/sito || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 18

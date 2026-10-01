@@ -1,16 +1,4 @@
 spring:
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: test-google-client-id
-            client-secret: test-google-client-secret
-            scope: openid,email,profile
-          facebook:
-            client-id: test-facebook-client-id
-            client-secret: test-facebook-client-secret
-            scope: email,public_profile
   mail:
     host: localhost
     port: 2525
@@ -23,6 +11,13 @@ management:
       enabled: false
 
 app:
+  social:
+    google:
+      client-id: test-google-client-id
+      client-secret: test-google-client-secret
+    facebook:
+      client-id: test-facebook-client-id
+      client-secret: test-facebook-client-secret
   jwt:
     secret: dGVzdC1zZWNyZXQtMzItYnl0ZXMtbG9uZy1mb3ItaHMyNTYhIQ==
     expiration: 3600

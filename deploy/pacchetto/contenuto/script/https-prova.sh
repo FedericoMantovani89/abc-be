@@ -13,6 +13,10 @@ set -Eeuo pipefail
 
 FILE="$CARTELLA_SITO/caddy/tls/prova.caddy"
 mkdir -p "$CARTELLA_SITO/caddy/tls"
+# Il Caddyfile importa caddy/tls/*.caddy: se la cartella e' vuota Caddy scrive un avviso inutile
+# ("No files matching import glob"). Un file con solo un commento lo evita.
+[ -e "$CARTELLA_SITO/caddy/tls/00-base.caddy" ] || printf '# (vuoto di proposito: tiene valido l'"'"'import di caddy/tls/*.caddy)
+' > "$CARTELLA_SITO/caddy/tls/00-base.caddy"
 RELOAD=1
 [ "${2:-}" = "--senza-reload" ] && RELOAD=0
 
@@ -33,6 +37,7 @@ case "${1:-}" in
     rm -f "$FILE"
     ricarica
     echo "HTTPS di prova spento: Caddy chiede il certificato vero a Let's Encrypt (serve che il DNS punti a questo server)."
+    echo "Se il DNS NON punta a questo server il certificato non arriva e il sito da' errore: in quel caso rilancia  bash script/https-prova.sh on"
     echo "Controlla tra qualche minuto:  curl -sI https://www.attoriballerinicantanti.it | head -n 1"
     ;;
   stato)

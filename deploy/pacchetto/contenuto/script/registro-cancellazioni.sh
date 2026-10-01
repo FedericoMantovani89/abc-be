@@ -26,18 +26,31 @@ FILE_REGISTRO=""
 if [ -n "${REGISTRO_DIR:-}" ]; then
   # dentro il container backup (o una prova): REGISTRO_DIR e psql diretto
   DIR_REGISTRO="$REGISTRO_DIR"
-  sql() { psql -v ON_ERROR_STOP=1 -At "$@"; }
+  sql() { psql -q -v ON_ERROR_STOP=1 -At "$@"; }
 else
   # shellcheck source=lib.sh
   . "$(dirname "$0")/lib.sh"
   DIR_REGISTRO="$(dati_dir)/registro-cancellazioni"
   sql() {
-    dc exec -T postgres psql -v ON_ERROR_STOP=1 -At -U "$(env_sito DB_USER)" -d "$(env_sito DB_NAME)" "$@"
+    dc exec -T postgres psql -q -v ON_ERROR_STOP=1 -At -U "$(env_sito DB_USER)" -d "$(env_sito DB_NAME)" "$@"
   }
 fi
 FILE_REGISTRO="$DIR_REGISTRO/utenti-cancellati.txt"
+if [ -z "${REGISTRO_DIR:-}" ]; then
+  sistema_registro      # sul server: il file deve essere leggibile e scrivibile da deploy
+fi
 mkdir -p "$DIR_REGISTRO"
 touch "$FILE_REGISTRO"
+
+# Il file contiene solo numeri (ID anonimi). Dentro il container backup gira root: il file va rimesso
+# allo stesso proprietario della cartella (deploy), altrimenti dopo la prima notte di backup
+# deploy non lo legge piu' (e fermava aggiorna.sh e ripristina.sh).
+proprieta_registro() {
+  chmod 644 "$1"
+  if [ -n "${REGISTRO_DIR:-}" ] && [ "$(id -u)" = "0" ]; then
+    chown --reference="$DIR_REGISTRO" "$1" 2>/dev/null || true
+  fi
+}
 
 solo_numeri() { grep -E '^[0-9]+$' || true; }
 
@@ -46,8 +59,8 @@ aggiorna() {
   nuovo="$(mktemp "$DIR_REGISTRO/.nuovo.XXXXXX")"
   { cat "$FILE_REGISTRO"; sql -c "SELECT id FROM users WHERE deleted_at IS NOT NULL ORDER BY id;"; } \
     | solo_numeri | sort -un > "$nuovo"
+  proprieta_registro "$nuovo"
   mv "$nuovo" "$FILE_REGISTRO"
-  chmod 640 "$FILE_REGISTRO"
   echo "registro cancellazioni aggiornato: $(wc -l < "$FILE_REGISTRO" | tr -d ' ') utenti"
 }
 
@@ -62,7 +75,7 @@ riapplica() {
   # Stessa anonimizzazione di AccountService.deleteAccount (colonne di users verificate fino alla V012),
   # sulle sole righe che esistono. Poi si toglie ogni token e si impedisce che questi ID
   # vengano riassegnati a utenti nuovi.
-  sql <<SQL
+  sql >/dev/null <<SQL
 BEGIN;
 UPDATE users
    SET deleted_at = COALESCE(deleted_at, now()),

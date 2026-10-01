@@ -126,7 +126,7 @@ Il file ha i commenti accanto a ogni valore. In sintesi, compila i valori segnat
 | `ADMIN_EMAIL` | l'email del **primo amministratore di ABC** (una persona di ABC) |
 | `ADMIN_PASSWORD` | generata con `openssl rand -base64 18 \| tr -d '\n=+/'` (la cambierai dal sito) |
 | `SMTP_PASSWORD` | la password della casella `info@attoriballerinicantanti.it` (Aruba) |
-| `GOOGLE_CLIENT_ID/SECRET`, `FACEBOOK_CLIENT_ID/SECRET` | le chiavi create da ABC (vedi sotto). Se per ora non le avete, lasciale vuote |
+| `GOOGLE_CLIENT_ID/SECRET`, `FACEBOOK_CLIENT_ID/SECRET` | le chiavi create da ABC (vedi sotto). **Facoltative**: se per ora non le avete, lasciale vuote e il sito parte lo stesso |
 
 Per generare una password: lancia il comando, copia il risultato e incollalo dopo il segno `=`, **senza spazi né virgolette**. Ogni segreto si genera una volta sola e va copiato **subito** nel gestore di password di ABC.
 
@@ -134,7 +134,13 @@ Per generare una password: lancia il comando, copia il risultato e incollalo dop
 
 **Posta:** `SMTP_HOST=smtps.aruba.it`, porta `465`, `SMTP_SSL=true`, utente e mittente `info@attoriballerinicantanti.it` sono già scritti. Se cambiate la password della casella `info@`, cambiatela anche qui e lanciate `bash /opt/abc-sito/script/riavvia.sh`.
 
-**Chiavi Google e Facebook** (account di ABC; si possono fare anche dopo, il sito parte lo stesso):
+> **Se Aruba non risponde** (o la password SMTP è sbagliata) il sito **resta in piedi**: partono solo le email (conferma iscrizione, reset password) che non vengono consegnate. Il controllo di salute che usa Docker non include la posta. Per vedere lo stato della posta: `bash /opt/abc-sito/script/compose.sh exec backend wget -qO- http://127.0.0.1:8080/actuator/health/posta` (risponde `UP` o `DOWN`).
+
+**Macchina di prova senza systemd** (per esempio un test dentro un container): i registri in `journald` impediscono l'avvio dei container. Aggiungi nel `.env` `LOG_DRIVER=json-file`. Su un server Ubuntu normale non scrivere nulla (predefinito `journald`).
+
+**Chiavi Google e Facebook** (account di ABC; **facoltative**: si possono fare anche dopo, il sito parte lo stesso):
+
+Un accesso social si attiva solo se per quel servizio sono compilati **sia l'ID sia il segreto**. Senza chiavi quel servizio è semplicemente spento: se qualcuno clicca il suo pulsante torna alla pagina di accesso con un errore chiaro (non un errore del server). All'avvio il backend scrive nel registro quali accessi sono attivi: `bash /opt/abc-sito/script/registri.sh backend | grep "Accessi social"`. Dopo aver aggiunto le chiavi lancia `bash /opt/abc-sito/script/riavvia.sh`.
 
 - *Google* — https://console.cloud.google.com → nuovo progetto → Google Auth Platform: tipo Esterno, dominio `attoriballerinicantanti.it`, ambiti solo `openid email profile`, **pubblica l'app**. Credenziali → ID client OAuth → Applicazione web. Origine JavaScript `https://www.attoriballerinicantanti.it`; URI di reindirizzamento **esatto**: `https://www.attoriballerinicantanti.it/login/oauth2/code/google`.
 - *Facebook* — https://developers.facebook.com → nuova app con Facebook Login. URI di reindirizzamento: `https://www.attoriballerinicantanti.it/login/oauth2/code/facebook`; URL privacy `https://www.attoriballerinicantanti.it/privacy-policy`; URL cancellazione dati `https://www.attoriballerinicantanti.it/privacy-policy#cancellazione`; autorizzazioni solo `email` e `public_profile`; app in modalità **Live**.
@@ -156,6 +162,14 @@ IP-DEL-SERVER  www.attoriballerinicantanti.it
 ```
 
 Apri `https://www.attoriballerinicantanti.it`: il browser avvisa che il certificato non è fidato (è normale, è il certificato di prova), prosegui. Controlla home, spettacoli, accesso con l'amministratore. **Togli la riga dal file `hosts` quando hai finito.**
+
+**Su una macchina di prova senza dominio** (nessun DNS e nessun file `hosts` da modificare, per esempio un server o una VM di test): il sito risponde comunque, perché è configurato per il nome `www.attoriballerinicantanti.it` con il certificato di prova. Basta dire a `curl` a quale indirizzo andare, **dalla macchina stessa o da un'altra**:
+
+```sh
+curl -k --resolve www.attoriballerinicantanti.it:443:IP-DEL-SERVER https://www.attoriballerinicantanti.it/     # la home (-k: accetta il certificato di prova)
+```
+
+(su una macchina di prova usa `127.0.0.1` come IP). **Non lanciare `https-prova.sh off` su una macchina di prova**: spegne il certificato interno e Caddy prova a ottenerne uno vero da Let's Encrypt, che fallisce se il DNS del dominio non punta a quella macchina.
 
 ## Passo 8. I backup (obbligatorio prima del passaggio)
 
@@ -203,6 +217,8 @@ Il giorno del passaggio, nel pannello Aruba → Gestione DNS cambia **solo**:
 ```sh
 bash /opt/abc-sito/script/https-prova.sh off
 ```
+
+> **Attenzione:** `https-prova.sh off` fa contattare a Caddy il **vero Let's Encrypt**. Se il DNS **non** punta già a questo server il certificato non arriva e il sito dà errore di certificato: lancialo solo **dopo** aver cambiato il DNS (e dopo che il cambio si è propagato). Se l'hai lanciato troppo presto, rimetti la prova con `bash /opt/abc-sito/script/https-prova.sh on`.
 
 Caddy chiede da solo il certificato vero (Let's Encrypt): serve qualche minuto. Controlla:
 

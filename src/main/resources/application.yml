@@ -39,27 +39,20 @@ spring:
     properties:
       mail.smtp.auth: true
 
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID:}
-            client-secret: ${GOOGLE_CLIENT_SECRET:}
-            redirect-uri: "${app.base-url}/login/oauth2/code/google"
-            scope: openid,email,profile
-          facebook:
-            client-id: ${FACEBOOK_CLIENT_ID:}
-            client-secret: ${FACEBOOK_CLIENT_SECRET:}
-            redirect-uri: "${app.base-url}/login/oauth2/code/facebook"
-            scope: email,public_profile
-
   servlet:
     multipart:
       max-file-size: 100MB
       max-request-size: 105MB
 
 app:
+  # Accessi social facoltativi: con id o segreto vuoti il provider non viene registrato (vedi SocialLoginConfig).
+  social:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+    facebook:
+      client-id: ${FACEBOOK_CLIENT_ID:}
+      client-secret: ${FACEBOOK_CLIENT_SECRET:}
   base-url: ${APP_BASE_URL:https://www.attoriballerinicantanti.it}
   frontend-url: ${APP_FRONTEND_URL:https://www.attoriballerinicantanti.it}
   upload-dir: ${APP_UPLOAD_DIR:./uploads}
@@ -118,6 +111,16 @@ management:
     health:
       show-details: never
       show-components: never
+      # i gruppi sotto non devono impedire l'avvio se un indicatore e' spento (es. management.health.mail.enabled=false)
+      validate-group-membership: false
+      group:
+        # Usato dall'healthcheck del compose: SOLO cio' che serve perche' il sito stia in piedi.
+        # La posta resta fuori: un guasto di Aruba non deve fermare backend, frontend e Caddy.
+        sito:
+          include: ping,db
+        # Stato della posta, per chi guarda l'actuator da dentro (wget http://localhost:8080/actuator/health/posta).
+        posta:
+          include: mail
 
 server:
   port: 8080

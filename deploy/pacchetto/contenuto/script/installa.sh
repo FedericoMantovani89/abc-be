@@ -42,6 +42,10 @@ cp -r "$PACCHETTO/caddy/." "$CARTELLA_SITO/caddy/"
 cp -r "$PACCHETTO/script/." "$CARTELLA_SITO/script/"
 cp -r "$PACCHETTO/config-esempio/." "$CARTELLA_SITO/config-esempio/"
 chmod +x "$CARTELLA_SITO"/script/*.sh "$CARTELLA_SITO/caddy/manutenzione.sh"
+# i documenti (PERSONALIZZARE.md rimanda a CHIAVI-DISPONIBILI.md) stanno anche nella cartella del sito
+for f in INSTALLA.md AGGIORNA.md PERSONALIZZARE.md CHIAVI-DISPONIBILI.md NOTE-DI-RILASCIO.md; do
+  if [ -f "$PACCHETTO/$f" ]; then cp "$PACCHETTO/$f" "$CARTELLA_SITO/"; fi
+done
 chmod 700 "$CARTELLA_SITO/segreti"
 ok "file copiati in $CARTELLA_SITO"
 

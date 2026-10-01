@@ -46,7 +46,7 @@ Dopo l'aggiornamento puoi cancellare la cartella del vecchio pacchetto e lo zip 
 
 ## Se qualcosa non va: tornare indietro
 
-Se lo script si ferma con un errore, **la manutenzione resta accesa** (così nessuno vede un sito a metà) e ti dice quale comando lanciare. Se invece l'aggiornamento è finito ma noti un problema grave:
+Se lo script si ferma con un errore **prima di sostituire i file del sito** (passi 1-6: controlli, backup, immagini), il sito è ancora la versione di prima: lo script **spegne da solo la manutenzione** e te lo dice. Se si ferma **dopo** (passi 7-9) la manutenzione resta accesa (così nessuno vede un sito a metà) e lo script scrive **in una riga** il comando da lanciare: `torna-indietro.sh`, oppure `sh /opt/abc-sito/caddy/manutenzione.sh off` se il sito è sano. Se invece l'aggiornamento è finito ma noti un problema grave:
 
 ```sh
 bash /opt/abc-sito/script/torna-indietro.sh

@@ -12,7 +12,9 @@
 #   - tiene da parte la versione precedente (per torna-indietro.sh)
 #   - carica e avvia la nuova versione; il database si aggiorna da solo
 #   - se tutto risponde, spegne la manutenzione
-# Se qualcosa va storto la manutenzione RESTA accesa e lo script dice come tornare indietro.
+# Se un passo fallisce PRIMA di sostituire i file (passi 1-6) il sito e' ancora quello di prima: lo script
+# spegne da solo la manutenzione. Se fallisce DOPO (passi 7-9) la manutenzione resta accesa e lo script
+# scrive in una riga come tornare indietro.
 #
 # Opzioni:  --si      non chiede conferme
 #           --forza   permette di reinstallare la stessa versione
@@ -57,9 +59,36 @@ controlla_hash_pacchetto
 chiedi_si "Aggiorno il sito da $VECCHIA a $NUOVA? Per qualche minuto il pubblico vedra' la pagina 'Torniamo tra poco'."
 
 passo "3/9 Accendo la manutenzione"
+SOSTITUITO=0   # diventa 1 quando i file del sito vengono sostituiti (passo 7)
+SITO_SANO=0    # diventa 1 quando la nuova versione risponde (fine passo 8)
+# Gira all'uscita (anche dopo un "fermati"): se lo script non e' arrivato in fondo sistema la manutenzione.
+_aggiornamento_fallito() {
+  local codice=$?
+  [ "$codice" -ne 0 ] || return 0
+  trap - EXIT ERR
+  set +e
+  errore "Aggiornamento INTERROTTO al passo \"${PASSO_CORRENTE}\"."
+  if [ "$SOSTITUITO" = "0" ]; then
+    # il sito e' ancora la versione di prima: si riaccende da solo
+    if manutenzione off >/dev/null 2>&1; then
+      errore "Il sito e' tornato quello di prima (versione $VECCHIA) e la manutenzione e' spenta: non c'e' niente da annullare. Risolvi il problema scritto sopra e rilancia."
+    else
+      errore "Il sito e' ancora la versione di prima, ma non sono riuscito a spegnere la manutenzione. Per riaccenderlo:  $RIGA_MANUTENZIONE_OFF"
+    fi
+  elif [ "$SITO_SANO" = "1" ]; then
+    # la nuova versione risponde: e' fallita solo la pulizia finale
+    if manutenzione off >/dev/null 2>&1; then
+      errore "La nuova versione risponde e la manutenzione e' spenta: e' fallita solo la pulizia finale, il sito e' in funzione."
+    else
+      errore "La nuova versione risponde ma la manutenzione e' ancora accesa. Per spegnerla:  $RIGA_MANUTENZIONE_OFF"
+    fi
+  else
+    errore "La manutenzione resta accesa. Per tornare alla versione precedente:  bash $CARTELLA_SITO/script/torna-indietro.sh   (oppure, se il sito e' sano, spegni la manutenzione:  $RIGA_MANUTENZIONE_OFF)"
+  fi
+  exit "$codice"
+}
+trap '_aggiornamento_fallito' EXIT
 manutenzione on
-# da qui in poi, se qualcosa fallisce, la manutenzione resta accesa di proposito
-trap 'errore "Aggiornamento INTERROTTO al passo \"${PASSO_CORRENTE}\" (riga $LINENO). La manutenzione resta accesa."; errore "Per tornare alla versione precedente:  bash '"$CARTELLA_SITO"'/script/torna-indietro.sh"; exit 1' ERR
 
 passo "4/9 Backup prima di aggiornare"
 bash "$CARTELLA_SITO/script/registro-cancellazioni.sh" aggiorna
@@ -94,14 +123,15 @@ passo "6/9 Carico la nuova versione"
 carica_immagini
 
 passo "7/9 Sostituisco i file del sito"
+SOSTITUITO=1
 cp "$PACCHETTO/docker-compose.prod.yml" "$PACCHETTO/Caddyfile" "$PACCHETTO/versione.env" "$PACCHETTO/.env.esempio" "$PACCHETTO/MANIFEST.txt" "$CARTELLA_SITO/"
 cp "$PACCHETTO/caddy/abc-sito.caddy" "$CARTELLA_SITO/caddy/"
 cp "$PACCHETTO/caddy/manutenzione.sh" "$CARTELLA_SITO/caddy/"
 cp -r "$PACCHETTO/caddy/pagine/." "$CARTELLA_SITO/caddy/pagine/"      # il file MANUTENZIONE non e' nel pacchetto: resta com'e'
 cp -r "$PACCHETTO/script/." "$CARTELLA_SITO/script/"
 cp -r "$PACCHETTO/config-esempio/." "$CARTELLA_SITO/config-esempio/"
-for f in INSTALLA.md AGGIORNA.md PERSONALIZZARE.md NOTE-DI-RILASCIO.md; do
-  [ -f "$PACCHETTO/$f" ] && cp "$PACCHETTO/$f" "$CARTELLA_SITO/"
+for f in INSTALLA.md AGGIORNA.md PERSONALIZZARE.md CHIAVI-DISPONIBILI.md NOTE-DI-RILASCIO.md; do
+  if [ -f "$PACCHETTO/$f" ]; then cp "$PACCHETTO/$f" "$CARTELLA_SITO/"; fi
 done
 chmod +x "$CARTELLA_SITO"/script/*.sh "$CARTELLA_SITO/caddy/manutenzione.sh"
 ok "la tua cartella /config (testi e dati personalizzati) NON e' stata toccata"
@@ -110,6 +140,7 @@ passo "8/9 Avvio la nuova versione"
 dc config -q
 dc up -d --remove-orphans
 attendi_sito_sano
+SITO_SANO=1
 dc ps
 
 passo "9/9 Pulizia e fine manutenzione"
@@ -117,14 +148,14 @@ passo "9/9 Pulizia e fine manutenzione"
 docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^abc-musical/' \
   | grep -vE ":(${NUOVA}|${VECCHIA})$" | xargs -r docker rmi || true
 # si tengono solo le ultime 3 copie del database fatte dagli aggiornamenti
-ls -1dt "$DATI"/copie-aggiornamento/*/ 2>/dev/null | tail -n +4 | xargs -r rm -rf
+{ ls -1dt "$DATI"/copie-aggiornamento/*/ 2>/dev/null || true; } | tail -n +4 | xargs -r rm -rf || true
 bash "$CARTELLA_SITO/script/registro-cancellazioni.sh" stato
 manutenzione off
-trap '_se_errore $LINENO' ERR
+trap - EXIT
 
 cat <<FINE
 
 == AGGIORNATO a $NUOVA.
    Controlla il sito (home, accesso, un caricamento) e leggi NOTE-DI-RILASCIO.md.
-   Se qualcosa non va:   bash $CARTELLA_SITO/script/torna-indietro.sh
+   Se qualcosa non va con la nuova versione:   bash $CARTELLA_SITO/script/torna-indietro.sh
 FINE
