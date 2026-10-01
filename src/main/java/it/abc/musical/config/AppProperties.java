@@ -80,6 +80,10 @@ public class AppProperties {
     @NotNull
     private Limits limits = new Limits();
 
+    @Valid
+    @NotNull
+    private Social social = new Social();
+
     @Getter
     @Setter
     public static class Upload {
@@ -194,5 +198,25 @@ public class AppProperties {
         @Min(1)
         @Max(100_000)
         private int authRequestsPerHour = 20;
+    }
+
+    /** Accessi social facoltativi: un provider con chiavi vuote non si registra e il sito parte senza. */
+    @Getter
+    @Setter
+    public static class Social {
+        private Provider google = new Provider();
+        private Provider facebook = new Provider();
+    }
+
+    @Getter
+    @Setter
+    public static class Provider {
+        private String clientId = "";
+        private String clientSecret = "";
+
+        /** Attivo solo se id E segreto sono compilati (spazi esclusi). */
+        public boolean isConfigured() {
+            return clientId != null && !clientId.isBlank() && clientSecret != null && !clientSecret.isBlank();
+        }
     }
 }
