@@ -130,3 +130,34 @@ attendi_sito_sano() {
 }
 
 manutenzione() { sh "$CARTELLA_SITO/caddy/manutenzione.sh" "$1"; }
+
+# Aspetta che Postgres (quello del sito) accetti connessioni.
+attendi_postgres() {
+  local i
+  for i in $(seq 1 30); do
+    if dc exec -T postgres pg_isready -q -U "$(env_sito DB_USER)" -d postgres 2>/dev/null; then return 0; fi
+    sleep 2
+  done
+  fermati "Postgres non risponde."
+}
+
+# ripristina_database FILE.dump : SOSTITUISCE il database del sito con quello del file.
+# Ferma frontend, backend e backup, ricrea il database vuoto, ricarica il file e riapplica
+# il registro delle cancellazioni. Non riavvia i servizi: lo fa chi chiama.
+ripristina_database() {
+  local file=$1 utente nome
+  [ -s "$file" ] || fermati "Il file del database non esiste o e' vuoto: $file"
+  utente="$(env_sito DB_USER)"; nome="$(env_sito DB_NAME)"
+  info "fermo frontend, backend e backup ..."
+  dc stop frontend backend backup
+  dc up -d postgres
+  attendi_postgres
+  info "ricreo il database $nome ..."
+  dc exec -T postgres psql -v ON_ERROR_STOP=1 -U "$utente" -d postgres \
+    -c "DROP DATABASE IF EXISTS \"$nome\" WITH (FORCE);" -c "CREATE DATABASE \"$nome\" OWNER \"$utente\";"
+  info "ricarico i dati dalla copia (puo' servire qualche minuto) ..."
+  dc exec -T postgres pg_restore -U "$utente" -d "$nome" --no-owner --exit-on-error < "$file"
+  ok "database ripristinato"
+  info "riapplico le cancellazioni degli utenti ..."
+  bash "$CARTELLA_SITO/script/registro-cancellazioni.sh" riapplica
+}
