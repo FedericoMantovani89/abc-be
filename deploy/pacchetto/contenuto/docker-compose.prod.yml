@@ -1,0 +1,191 @@
+# ============================================================================
+# Sito ABC Musical Company — compose di PRODUZIONE (pacchetto di installazione)
+#
+# Autosufficiente: Caddy (HTTPS), frontend, backend, Postgres, backup.
+# Non si lancia a mano: usa gli script in script/ (installa.sh, aggiorna.sh, ...),
+# che passano da soli .env (i segreti) e versione.env (la versione installata).
+#
+# Cartelle dei dati, tutte sul Volume (DATI_DIR, di norma /mnt/abc-dati):
+#   postgres/               database
+#   uploads/                documenti, foto e video caricati
+#   config/                 testi.json, sito.json, application-prod.yml, email/ (vedi PERSONALIZZARE.md)
+#   registro-cancellazioni/ id anonimi degli utenti cancellati (riapplicati dopo un ripristino)
+#   caddy/                  certificati HTTPS
+# ============================================================================
+name: abc-sito
+
+# Registri dei servizi: li raccoglie journald, che il server tiene al massimo 14 giorni
+# (impostato da prepara-server.sh). I registri contengono indirizzi IP ed email.
+x-registri: &registri
+  logging:
+    driver: journald
+    options:
+      tag: "abc-{{.Name}}"
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    <<: *registri
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    environment:
+      TZ: Europe/Rome
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/abc-sito.caddy:/etc/caddy/abc-sito.caddy:ro
+      - ./caddy/tls:/etc/caddy/tls:ro
+      # pagina "sito non disponibile" e file MANUTENZIONE (lo accende/spegne caddy/manutenzione.sh)
+      - ./caddy/pagine:/srv/abc-pagine:ro
+      - ${DATI_DIR:-/mnt/abc-dati}/caddy/data:/data
+      - ${DATI_DIR:-/mnt/abc-dati}/caddy/config:/config
+    networks:
+      - pubblica
+      - web
+
+  frontend:
+    image: abc-musical/frontend:${VERSIONE:?manca VERSIONE (file versione.env)}
+    <<: *registri
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      TZ: Europe/Rome
+      SPRING_API_URL: http://backend:8080
+      BACKEND_HOSTNAME: backend:8080
+      NEXTAUTH_URL: ${APP_FRONTEND_URL:-https://www.attoriballerinicantanti.it}
+      AUTH_URL: ${APP_FRONTEND_URL:-https://www.attoriballerinicantanti.it}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?manca NEXTAUTH_SECRET nel file .env}
+      AUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      CONFIG_DIR: /config
+    volumes:
+      - ${DATI_DIR:-/mnt/abc-dati}/config:/config:ro
+    networks:
+      - web
+      - app
+    # nessuna porta pubblicata: ci arriva solo Caddy
+
+  backend:
+    image: abc-musical/backend:${VERSIONE:?manca VERSIONE (file versione.env)}
+    <<: *registri
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Le date sono orario di Roma e le colonne sono senza fuso: il container deve girare in Europe/Rome.
+      TZ: Europe/Rome
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-abc}
+      DB_USER: ${DB_USER:-abc}
+      DB_PASSWORD: ${DB_PASSWORD:?manca DB_PASSWORD nel file .env}
+      JWT_SECRET: ${JWT_SECRET:?manca JWT_SECRET nel file .env}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600}
+      JWT_REMEMBERME_EXPIRATION: ${JWT_REMEMBERME_EXPIRATION:-2592000}
+      REMEMBER_ME_KEY: ${REMEMBER_ME_KEY:?manca REMEMBER_ME_KEY nel file .env}
+      SMTP_HOST: ${SMTP_HOST:-smtps.aruba.it}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SSL: ${SMTP_SSL:-true}
+      SMTP_USER: ${SMTP_USER:?manca SMTP_USER nel file .env}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:?manca SMTP_PASSWORD nel file .env}
+      MAIL_FROM: ${MAIL_FROM:-info@attoriballerinicantanti.it}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-ABC Musical Company}
+      MAIL_REPLY_TO: ${MAIL_REPLY_TO:-}
+      ASSOCIAZIONE_RUNTS: ${ASSOCIAZIONE_RUNTS:-2716 del 04/07/2022}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      FACEBOOK_CLIENT_ID: ${FACEBOOK_CLIENT_ID:-}
+      FACEBOOK_CLIENT_SECRET: ${FACEBOOK_CLIENT_SECRET:-}
+      APP_BASE_URL: ${APP_BASE_URL:-https://www.attoriballerinicantanti.it}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL:-https://www.attoriballerinicantanti.it}
+      APP_UPLOAD_DIR: /var/data/uploads
+      APP_CONFIG_DIR: /config
+      UPLOAD_CHUNK_SIZE_MB: ${UPLOAD_CHUNK_SIZE_MB:-8}
+      UPLOAD_SESSION_TTL_HOURS: ${UPLOAD_SESSION_TTL_HOURS:-24}
+      AUDIT_LOG_RETENTION_MONTHS: ${AUDIT_LOG_RETENTION_MONTHS:-12}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?manca ADMIN_EMAIL nel file .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?manca ADMIN_PASSWORD nel file .env}
+    volumes:
+      - ${DATI_DIR:-/mnt/abc-dati}/uploads:/var/data/uploads
+      - ${DATI_DIR:-/mnt/abc-dati}/config:/config:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 40s
+    networks:
+      - app
+      - db
+      - uscita      # solo uscita verso Google, Facebook e Aruba (SMTP)
+    # NESSUNA porta pubblicata, nemmeno su 127.0.0.1: il backend e' raggiungibile solo
+    # dal frontend, sulla rete interna.
+
+  postgres:
+    image: postgres:16-alpine
+    <<: *registri
+    restart: unless-stopped
+    shm_size: 256mb
+    environment:
+      TZ: Europe/Rome
+      PGTZ: Europe/Rome
+      POSTGRES_DB: ${DB_NAME:-abc}
+      POSTGRES_USER: ${DB_USER:-abc}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?manca DB_PASSWORD nel file .env}
+    volumes:
+      - ${DATI_DIR:-/mnt/abc-dati}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - db
+
+  backup:
+    image: abc-musical/backup:${VERSIONE:?manca VERSIONE (file versione.env)}
+    <<: *registri
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      TZ: Europe/Rome
+      PGHOST: postgres
+      PGDATABASE: ${DB_NAME:-abc}
+      PGUSER: ${DB_USER:-abc}
+      PGPASSWORD: ${DB_PASSWORD}
+      RESTIC_REPOSITORY: ${BACKUP_REPOSITORY:-}
+      RESTIC_PASSWORD: ${BACKUP_PASSWORD:-}
+      BACKUP_SSH_PORTA: ${BACKUP_SSH_PORTA:-23}
+      BACKUP_ORA: ${BACKUP_ORA:-03:30}
+    volumes:
+      - ${DATI_DIR:-/mnt/abc-dati}/uploads:/dati/uploads:ro
+      - ${DATI_DIR:-/mnt/abc-dati}/config:/dati/config:ro
+      - ${DATI_DIR:-/mnt/abc-dati}/registro-cancellazioni:/dati/registro-cancellazioni
+      # chiave SSH della Storage Box e lista dei server fidati: create da ABC (vedi INSTALLA.md)
+      - ${SEGRETI_DIR:-./segreti}:/segreti
+    networks:
+      - db
+      - uscita      # solo uscita verso la Storage Box
+
+networks:
+  # Reti separate: ognuno vede solo chi deve vedere. Le "internal" non hanno accesso a Internet.
+  pubblica:        # Caddy: porte 80/443
+    {}
+  web:             # Caddy <-> frontend
+    internal: true
+  app:             # frontend <-> backend (il backend e' raggiungibile SOLO dal frontend)
+    internal: true
+  db:              # backend, backup <-> database
+    internal: true
+  uscita:          # solo backend e backup, per uscire verso Internet (Google, Facebook, Aruba, Storage Box)
+    {}

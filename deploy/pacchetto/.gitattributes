@@ -1,0 +1,11 @@
+# Tutto cio' che finisce nel pacchetto per il server (Linux) deve avere gli a capo Unix (LF),
+# anche se il repository e' estratto su Windows.
+* text=auto
+*.sh text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.ps1 text eol=lf
+Caddyfile text eol=lf
+Dockerfile text eol=lf
+.env.esempio text eol=lf
