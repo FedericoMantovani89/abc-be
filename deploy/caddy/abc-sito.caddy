@@ -1,0 +1,42 @@
+# Snippet di Caddy per il sito ABC: pagina "sito momentaneamente non disponibile" e manutenzione.
+#
+# Uso, dentro il blocco del dominio del Caddyfile (la cartella `pagine/` di questa cartella deve
+# essere montata in Caddy come /srv/abc-pagine):
+#
+#   import /etc/caddy/abc-sito.caddy        # una volta, in cima al Caddyfile
+#   www.attoriballerinicantanti.it {
+#       import abc_sito abc-frontend:3000   # destinazione = frontend
+#   }
+#
+# - Frontend o backend spenti o bloccati (errori 502, 503, 504): si vede pagine/sito-non-disponibile.html
+#   (file unico: logo, stile e testo dentro), con lo stesso codice HTTP dell'errore.
+# - Manutenzione: se nella cartella `pagine/` esiste un file chiamato MANUTENZIONE, ogni richiesta
+#   riceve la stessa pagina con codice 503 e il frontend non viene nemmeno interpellato.
+#   Si accende e si spegne con `manutenzione.sh on|off` (lo useranno aggiorna.sh e il Referente);
+#   non serve ricaricare Caddy.
+# - Se e' spento il server intero non risponde nessuno: vedi il piano B in INSTALLA.md.
+(abc_sito) {
+	root * /srv/abc-pagine
+
+	@manutenzione file {
+		root /srv/abc-pagine
+		try_files MANUTENZIONE
+	}
+	handle @manutenzione {
+		error "manutenzione" 503
+	}
+
+	handle {
+		reverse_proxy {args[0]}
+	}
+
+	handle_errors {
+		@nondisponibile expression {err.status_code} in [502, 503, 504]
+		handle @nondisponibile {
+			header Cache-Control "no-store"
+			header Retry-After "60"
+			rewrite * /sito-non-disponibile.html
+			file_server
+		}
+	}
+}
