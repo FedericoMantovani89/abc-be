@@ -250,7 +250,7 @@ function CopiaNelPacchetto([string]$src, [string]$destAssoluto) {
 # Il Referente non ha il codice di abc-fe: l'elenco delle chiavi (con i valori originali) si GENERA da
 # lib/testi/it.ts e lib/testi/sito.ts e si mette nel pacchetto come CHIAVI-DISPONIBILI.md. Non si copia a mano.
 function EstraiChiavi([string]$file, [string]$inizio) {
-  if (-not (Test-Path $file -PathType Leaf)) { throw "Non trovo $file: non posso generare l'elenco delle chiavi." }
+  if (-not (Test-Path $file -PathType Leaf)) { throw "Non trovo ${file}: non posso generare l'elenco delle chiavi." }
   $pila = New-Object System.Collections.Generic.List[string]
   $risultato = New-Object System.Collections.Generic.List[object]
   $dentro = $false
@@ -279,7 +279,7 @@ function EstraiChiavi([string]$file, [string]$inizio) {
       $risultato.Add([pscustomobject]@{ Chiave = (($pila + $nome) -join '.'); Valore = "(elenco) $($Matches[3])" })
       continue
     }
-    if ($r -match "^\s*${chiave}:\s*(?:'((?:[^'\]|\.)*)'|""((?:[^""\]|\.)*)"")\s*,?\s*(//.*)?$") {
+    if ($r -match "^\s*${chiave}:\s*(?:'((?:[^'\\]|\\.)*)'|""((?:[^""\\]|\\.)*)"")\s*,?\s*(//.*)?$") {
       $nome = $(if ($Matches[1]) { $Matches[1] } else { $Matches[2] })
       $valore = $(if ($null -ne $Matches[3]) { $Matches[3] } else { $Matches[4] })
       $risultato.Add([pscustomobject]@{ Chiave = (($pila + $nome) -join '.'); Valore = $valore.Replace("\'", "'") })
