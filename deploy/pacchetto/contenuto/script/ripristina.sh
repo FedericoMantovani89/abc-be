@@ -42,6 +42,7 @@ _ripristino_fallito() {
   fi
   exit "$codice"
 }
+trap - ERR   # il messaggio lo da' il gestore qui sotto, una volta sola
 trap '_ripristino_fallito' EXIT
 
 passo "2/8 Accendo la manutenzione e salvo il registro delle cancellazioni"

@@ -25,12 +25,17 @@ errore() { printf '%s   ERRORE:%s %s\n' "$ROSSO" "$FINE" "$*" >&2; }
 fermati() { errore "$*"; exit 1; }
 
 # Se un comando fallisce, lo script si ferma e dice a che punto era.
+# Un errore = un messaggio: se lo script e' stato lanciato da un altro script del pacchetto
+# (ABC_ANNIDATO), parla solo quello di livello piu' alto e questo esce in silenzio.
 _se_errore() {
   local codice=$? riga=$1
-  errore "Lo script si e' fermato al passo: \"${PASSO_CORRENTE}\" (riga ${riga}, codice ${codice})."
-  errore "Leggi il messaggio sopra. Non rilanciare a caso: se non e' chiaro, scrivi a Federico copiando le ultime righe (senza password)."
+  if [ -z "$SONO_ANNIDATO" ]; then
+    errore "Lo script si e' fermato al passo \"${PASSO_CORRENTE}\" (riga ${riga}, codice ${codice}). Leggi il messaggio sopra; se non e' chiaro non rilanciare a caso: scrivi a Federico copiando le ultime righe (senza password)."
+  fi
   exit "$codice"
 }
+SONO_ANNIDATO="${ABC_ANNIDATO:-}"   # com'era all'avvio: vuoto = lanciato da una persona
+export ABC_ANNIDATO=1
 trap '_se_errore $LINENO' ERR
 
 # chiedi_si "Domanda": risponde sempre si' se SI=1 (opzione --si).

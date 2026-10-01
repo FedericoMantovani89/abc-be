@@ -87,6 +87,7 @@ _aggiornamento_fallito() {
   fi
   exit "$codice"
 }
+trap - ERR   # il messaggio lo da' il gestore qui sotto, una volta sola
 trap '_aggiornamento_fallito' EXIT
 manutenzione on
 

@@ -120,7 +120,7 @@ services:
       - ${DATI_DIR:-/mnt/abc-dati}/config:/config:ro
     healthcheck:
       # Controlla il gruppo di salute "sito" (programma + database), NON la posta: se Aruba non risponde
-      # il sito deve restare in piedi. Lo stato della posta: compose.sh exec backend wget -qO- http://127.0.0.1:8080/actuator/health/posta
+      # il sito deve restare in piedi. Lo stato della posta: bash script/stato-posta.sh
       # (127.0.0.1 e non localhost: nel container localhost puo' risolvere su ::1)
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/actuator/health/sito || exit 1"]
       interval: 10s

@@ -48,19 +48,21 @@ touch "$FILE_REGISTRO"
 proprieta_registro() {
   chmod 644 "$1"
   if [ -n "${REGISTRO_DIR:-}" ] && [ "$(id -u)" = "0" ]; then
-    chown --reference="$DIR_REGISTRO" "$1" 2>/dev/null || true
+    # (il chown di Alpine/busybox non ha --reference: si copiano utente e gruppo con stat)
+    chown "$(stat -c %u:%g "$DIR_REGISTRO")" "$1" 2>/dev/null || true
   fi
 }
 
 solo_numeri() { grep -E '^[0-9]+$' || true; }
 
 aggiorna() {
-  local nuovo
-  nuovo="$(mktemp "$DIR_REGISTRO/.nuovo.XXXXXX")"
+  NUOVO="$(mktemp "$DIR_REGISTRO/.nuovo.XXXXXX")"
+  # se qualcosa fallisce (per esempio psql) il file temporaneo non deve restare nella cartella
+  trap 'rm -f "$NUOVO"' EXIT
   { cat "$FILE_REGISTRO"; sql -c "SELECT id FROM users WHERE deleted_at IS NOT NULL ORDER BY id;"; } \
-    | solo_numeri | sort -un > "$nuovo"
-  proprieta_registro "$nuovo"
-  mv "$nuovo" "$FILE_REGISTRO"
+    | solo_numeri | sort -un > "$NUOVO"
+  proprieta_registro "$NUOVO"
+  mv "$NUOVO" "$FILE_REGISTRO"
   echo "registro cancellazioni aggiornato: $(wc -l < "$FILE_REGISTRO" | tr -d ' ') utenti"
 }
 
