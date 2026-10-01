@@ -103,5 +103,5 @@ cat <<FINE
    Controlla il sito: accesso, un documento, una foto.
    Le cartelle "*.prima-del-ripristino-$ADESSO" in $DATI contengono i dati di prima:
    cancellale a mano quando hai verificato che va tutto bene.
-   Se questo e' un server nuovo: ricorda di spostare il DNS (INSTALLA.md, passo 8).
+   Se questo e' un server nuovo: ricorda di spostare il DNS (INSTALLA.md, passo 9).
 FINE
