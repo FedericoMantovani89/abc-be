@@ -145,7 +145,7 @@ function ControllaRepo([string]$nome, [string]$percorso) {
 $NomiVietati = '^\.env($|\.)|\.(pem|key|p12|pfx|jks|keystore|sql|dump|sqlite|sqlite3|db|csv|bak)$|^id_(rsa|ed25519|ecdsa)|\.tar$|^uploads$'
 $ModelliSegreto = @(
   '-----BEGIN [A-Z ]*PRIVATE KEY-----',
-  '(?im)^\s*(JWT_SECRET|NEXTAUTH_SECRET|AUTH_SECRET|REMEMBER_ME_KEY|DB_PASSWORD|POSTGRES_PASSWORD|ADMIN_PASSWORD|SMTP_PASSWORD|GOOGLE_CLIENT_SECRET|FACEBOOK_CLIENT_SECRET|BACKUP_PASSWORD|RESTIC_PASSWORD)\s*[:=]\s*["'']?[A-Za-z0-9+/_\-]{6,}',
+  '(?im)^[ \t]*(JWT_SECRET|NEXTAUTH_SECRET|AUTH_SECRET|REMEMBER_ME_KEY|DB_PASSWORD|POSTGRES_PASSWORD|ADMIN_PASSWORD|SMTP_PASSWORD|GOOGLE_CLIENT_SECRET|FACEBOOK_CLIENT_SECRET|BACKUP_PASSWORD|RESTIC_PASSWORD)[ \t]*[:=][ \t]*["'']?[A-Za-z0-9+/_\-]{6,}',
   'AKIA[0-9A-Z]{16}',
   'AIza[0-9A-Za-z_\-]{35}',
   'GOCSPX-[0-9A-Za-z_\-]{10,}',
